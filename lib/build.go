@@ -37,7 +37,6 @@ func ParsePackage(data string) PackageContext {
 	for _, line := range strings.Split(strings.TrimSuffix(data, "\n"), "\n") {
 		// We expect a ': ' to be present in any Key: Value line
 		if strings.Contains(line, ": ") {
-			fmt.Printf("In the context of the subpackage '%s', I am parsing this line:\n\t%s\n", currentSubpackage, line)
 			// Split our line by whitespace
 			words := strings.Fields(line)
 
@@ -59,7 +58,6 @@ func ParsePackage(data string) PackageContext {
 			// If we're currently operating on a subpackage, then we want to write
 			// changes to that subpackage.
 			if currentSubpackage != "" {
-				println("\tChanging fields to match the subpackage:", currentSubpackage)
 				fields = reflect.TypeOf(lex.Subpackages[currentSubpackage])
 			}
 
@@ -121,7 +119,7 @@ func ParsePackage(data string) PackageContext {
 		}
 	}
 
-	fmt.Printf("Package struct:\n\t%+v\n\n", lex)
+	fmt.Printf("Package struct:\n%s\n", prettyPrint(lex))
 
 	println(lex.GeneratePackageInfo())
 

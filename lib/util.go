@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"encoding/json"
 	"strings"
 )
 
@@ -55,4 +56,9 @@ func grabFlagFromString(parent, grabFlag string, dontGrabFlags []string) (string
 	} else {
 		return "", false
 	}
+}
+
+func prettyPrint(i interface{}) string {
+	s, _ := json.MarshalIndent(i, "", "\t")
+	return string(s)
 }
