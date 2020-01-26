@@ -26,8 +26,8 @@ import (
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-func lex(data string) packageContext {
-	lex := packageContext{}
+func lex(data string) PackageContext {
+	lex := PackageContext{}
 
 	// Let's parse the Key: Value things first
 	for _, line := range strings.Split(strings.TrimSuffix(data, "\n"), "\n") {
@@ -81,7 +81,7 @@ func lex(data string) packageContext {
 
 	fmt.Printf("Package struct:\n\t%+v\n\n", lex)
 
-	println(lex.generatePackageInfo())
+	println(lex.GeneratePackageInfo())
 
 	return lex
 }

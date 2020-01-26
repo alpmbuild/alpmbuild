@@ -25,7 +25,7 @@ import (
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-func evalInlineMacros(input string, context packageContext) string {
+func evalInlineMacros(input string, context PackageContext) string {
 	mutate := input
 
 	// This regex will match data inside %{data}
