@@ -55,6 +55,7 @@ func lex(data string) packageContext {
 			// Loop through the fields of the package context in order to see if any of the annotated key values match the line we're on
 			for i := 0; i < num; i++ {
 				field := fields.Field(i)
+				// These are the single-value keys, such as Name, Version, Release, and Summary
 				if strings.ToLower(words[0]) == field.Tag.Get("key") {
 					// We assert that packageContext only has string fields here.
 					// If it doesn't, our code will break.
@@ -63,11 +64,24 @@ func lex(data string) packageContext {
 						key.SetString(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex))
 					}
 				}
+				// These are the multi-value keys, such as Requires and BuildRequires
+				if strings.ToLower(words[0]) == field.Tag.Get("keyArray") {
+					// We assume that packageContext only has string array fields here.
+					// If it doesn't, our code will break.
+					key := reflect.ValueOf(&lex).Elem().FieldByName(field.Name)
+					if key.IsValid() {
+						itemArray := strings.Split(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex), " ")
+
+						key.Set(reflect.AppendSlice(key, reflect.ValueOf(itemArray)))
+					}
+				}
 			}
 		}
 	}
 
-	fmt.Printf("%+v\n", lex)
+	fmt.Printf("Package struct:\n\t%+v\n\n", lex)
+
+	println(lex.generatePackageInfo())
 
 	return lex
 }

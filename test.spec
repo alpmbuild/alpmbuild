@@ -8,7 +8,10 @@ URL:     https://gnu.org
 
 Source0: https://ftp.gnu.org/gnu/hello/%{name}-%{version}.tar.gz
 
-BuildRequires: gcc make gettext
+Requires: base
+BuildRequires: gcc
+BuildRequires: make
+BuildRequires: gettext
 
 %prep
 %autosetup
