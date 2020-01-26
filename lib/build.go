@@ -26,7 +26,7 @@ import (
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-func lex(data string) PackageContext {
+func ParsePackage(data string) PackageContext {
 	lex := PackageContext{}
 
 	// Let's parse the Key: Value things first
@@ -92,6 +92,6 @@ func Build(pathToRecipe string) error {
 	if err != nil {
 		return err
 	}
-	lex(string(data))
+	ParsePackage(string(data))
 	return nil
 }
