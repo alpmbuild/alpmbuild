@@ -28,3 +28,6 @@ BuildRequires: gettext
 %{_datadir}/info/hello.info.gz
 %{_datadir}/man/man1/hello.1.gz
 %{_datadir}/locale/*/LC_MESSAGES/hello.mo
+
+%package info
+Summary: sweet flying pingas this package shouldn't exist

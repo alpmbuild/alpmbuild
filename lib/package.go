@@ -41,6 +41,9 @@ type PackageContext struct {
 
 	// Nonstandard array fields
 	Sources []string
+
+	// Other fields
+	Subpackages map[string]PackageContext
 }
 
 func (pkg PackageContext) GeneratePackageInfo() string {

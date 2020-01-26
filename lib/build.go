@@ -29,10 +29,15 @@ import (
 func ParsePackage(data string) PackageContext {
 	lex := PackageContext{}
 
+	lex.Subpackages = make(map[string]PackageContext)
+
+	currentSubpackage := ""
+
 	// Let's parse the Key: Value things first
 	for _, line := range strings.Split(strings.TrimSuffix(data, "\n"), "\n") {
 		// We expect a ': ' to be present in any Key: Value line
 		if strings.Contains(line, ": ") {
+			fmt.Printf("In the context of the subpackage '%s', I am parsing this line:\n\t%s\n", currentSubpackage, line)
 			// Split our line by whitespace
 			words := strings.Fields(line)
 
@@ -50,6 +55,19 @@ func ParsePackage(data string) PackageContext {
 			// Now we produce macros based off our package context.
 
 			fields := reflect.TypeOf(lex)
+
+			// If we're currently operating on a subpackage, then we want to write
+			// changes to that subpackage.
+			if currentSubpackage != "" {
+				println("\tChanging fields to match the subpackage:", currentSubpackage)
+				fields = reflect.TypeOf(lex.Subpackages[currentSubpackage])
+			}
+
+			currentPackage := lex
+			if currentSubpackage != "" {
+				currentPackage = lex.Subpackages[currentSubpackage]
+			}
+
 			num := fields.NumField()
 
 			// Loop through the fields of the package context in order to see if any of the annotated key values match the line we're on
@@ -59,7 +77,7 @@ func ParsePackage(data string) PackageContext {
 				if strings.ToLower(words[0]) == field.Tag.Get("key") {
 					// We assert that packageContext only has string fields here.
 					// If it doesn't, our code will break.
-					key := reflect.ValueOf(&lex).Elem().FieldByName(field.Name)
+					key := reflect.ValueOf(&currentPackage).Elem().FieldByName(field.Name)
 					if key.IsValid() {
 						key.SetString(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex))
 					}
@@ -68,12 +86,36 @@ func ParsePackage(data string) PackageContext {
 				if strings.ToLower(words[0]) == field.Tag.Get("keyArray") {
 					// We assume that packageContext only has string array fields here.
 					// If it doesn't, our code will break.
-					key := reflect.ValueOf(&lex).Elem().FieldByName(field.Name)
+					key := reflect.ValueOf(&currentPackage).Elem().FieldByName(field.Name)
 					if key.IsValid() {
 						itemArray := strings.Split(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex), " ")
 
 						key.Set(reflect.AppendSlice(key, reflect.ValueOf(itemArray)))
 					}
+				}
+			}
+
+			if currentSubpackage != "" {
+				lex.Subpackages[currentSubpackage] = currentPackage
+			} else {
+				lex = currentPackage
+			}
+		}
+
+		// We need to be able to handle subpackages
+		if strings.Contains(line, "%package") {
+			if subpackageName, hasSubpackage := grabFlagFromString(line, "-n", []string{}); hasSubpackage {
+				currentSubpackage = lex.Name + "-" + subpackageName
+			} else {
+				if splitString := strings.Split(line, " "); len(splitString) >= 2 {
+					currentSubpackage = lex.Name + "-" + splitString[1]
+				} else {
+					panic("%package does not have a name!")
+				}
+			}
+			if currentSubpackage != "" {
+				lex.Subpackages[currentSubpackage] = PackageContext{
+					Name: currentSubpackage,
 				}
 			}
 		}
