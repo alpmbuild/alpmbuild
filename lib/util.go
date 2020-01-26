@@ -1,6 +1,8 @@
 package lib
 
-import "strings"
+import (
+	"strings"
+)
 
 /*
    alpmbuild — a tool to build arch packages from RPM specfiles
@@ -23,4 +25,34 @@ import "strings"
 
 func containsInsensitive(larger, substring string) bool {
 	return strings.Contains(strings.ToLower(larger), strings.ToLower(substring))
+}
+
+func grabFlagFromString(parent, grabFlag string, dontGrabFlags []string) (string, bool) {
+	splitString := strings.Split(parent, " ")
+	returnValue := ""
+
+	for index, splitWord := range splitString {
+		if strings.HasPrefix(splitWord, "-"+grabFlag) {
+			flagValue := ""
+		parentFlagLoop:
+			for _, ii := range splitString[index+1:] {
+				for _, dontGrab := range dontGrabFlags {
+					if !strings.HasPrefix(ii, "-"+dontGrab) {
+						flagValue = flagValue + " " + ii
+					} else {
+						break parentFlagLoop
+					}
+				}
+			}
+			if strings.TrimSpace(flagValue) != "" {
+				returnValue = strings.TrimSpace(flagValue)
+			}
+		}
+	}
+
+	if returnValue != "" {
+		return returnValue, true
+	} else {
+		return "", false
+	}
 }
