@@ -25,13 +25,35 @@ import (
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+var macros = map[string]string{
+	"_sysconfdir":     "/etc",
+	"_prefix":         "/usr",
+	"_exec_prefix":    "%{_prefix}",
+	"_includedir":     "%{_prefix}/include",
+	"_bindir":         "%{_exec_prefix}/bin",
+	"_libdir":         "%{_exec_prefix}/%{_lib}",
+	"_libexecdir":     "%{_exec_prefix}/libexec",
+	"_sbindir":        "%{_exec_prefix}/sbin",
+	"_datadir":        "%{_datarootdir}",
+	"_infodir":        "%{_datarootdir}/info",
+	"_mandir":         "%{_datarootdir}/man",
+	"_docdir":         "%{_datadir}/doc",
+	"_rundir":         "/run",
+	"_localstatedir":  "/var",
+	"_sharedstatedir": "/var/lib",
+	"_lib":            "lib",
+}
+
 func evalInlineMacros(input string, context PackageContext) string {
 	mutate := input
 
 	// This regex will match data inside %{data}
 	grabMacro := regexp.MustCompile(`%{(.+?)}`)
 
-	for _, match := range grabMacro.FindAll([]byte(input), -1) {
+	timesLooped := 0
+
+macroLoop:
+	for _, match := range grabMacro.FindAll([]byte(mutate), -1) {
 		// Let's turn our match into a string...
 		matchString := string(match)
 
@@ -53,6 +75,20 @@ func evalInlineMacros(input string, context PackageContext) string {
 				}
 			}
 		}
+
+		// Now let's see if our hardcoded macros have anything in store for us
+		for macro, value := range macros {
+			if strings.ToLower(matchContent) == macro {
+				mutate = strings.ReplaceAll(mutate, matchString, value)
+			}
+		}
+	}
+
+	// We want to keep going over macros until there's no more remaining
+	// But not for forever, as we don't want to trip over invalid macros
+	if len(grabMacro.FindAll([]byte(mutate), -1)) != 0 && timesLooped < 256 {
+		timesLooped++
+		goto macroLoop
 	}
 
 	return mutate

@@ -18,7 +18,7 @@ tar -xvf %{name}-%{version}.tar.gz
 cd %{name}-%{version}
 
 %build
-./configure --prefix=/usr
+./configure --prefix=%{_prefix}
 make
 
 %install
