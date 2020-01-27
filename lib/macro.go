@@ -1,10 +1,6 @@
 package lib
 
-import (
-	"reflect"
-	"regexp"
-	"strings"
-)
+import "github.com/appadeia/alpmbuild/lib/librpm"
 
 /*
    alpmbuild — a tool to build arch packages from RPM specfiles
@@ -45,52 +41,20 @@ var macros = map[string]string{
 	"_lib":            "lib",
 }
 
+var expanded = false
+
 func evalInlineMacros(input string, context PackageContext) string {
+	if !expanded {
+		for macro, expandTo := range macros {
+			librpm.DefineMacro(macro+" "+expandTo, 256)
+		}
+	}
+	if context.Name != "" {
+		librpm.DefineMacro("name "+context.Name, 0)
+	}
+	if context.Version != "" {
+		librpm.DefineMacro("version "+context.Version, 0)
+	}
 	mutate := input
-
-	// This regex will match data inside %{data}
-	grabMacro := regexp.MustCompile(`%{(.+?)}`)
-
-	timesLooped := 0
-
-macroLoop:
-	for _, match := range grabMacro.FindAll([]byte(mutate), -1) {
-		// Let's turn our match into a string...
-		matchString := string(match)
-
-		// ... and remove the %{} from %{data} to get data
-		matchContent := strings.TrimPrefix(strings.TrimSuffix(matchString, "}"), "%{")
-
-		// Loop through the fields of the package context in order to see if any of the annotated macros are in this line
-		fields := reflect.TypeOf(context)
-		num := fields.NumField()
-
-		for i := 0; i < num; i++ {
-			field := fields.Field(i)
-			if strings.ToLower(matchContent) == field.Tag.Get("macro") {
-				// We assert that packageContext only has string fields here.
-				// If it doesn't, our code will break.
-				key := reflect.ValueOf(&context).Elem().FieldByName(field.Name)
-				if key.IsValid() {
-					mutate = strings.ReplaceAll(mutate, matchString, key.String())
-				}
-			}
-		}
-
-		// Now let's see if our hardcoded macros have anything in store for us
-		for macro, value := range macros {
-			if strings.ToLower(matchContent) == macro {
-				mutate = strings.ReplaceAll(mutate, matchString, value)
-			}
-		}
-	}
-
-	// We want to keep going over macros until there's no more remaining
-	// But not for forever, as we don't want to trip over invalid macros
-	if len(grabMacro.FindAll([]byte(mutate), -1)) != 0 && timesLooped < 256 {
-		timesLooped++
-		goto macroLoop
-	}
-
-	return mutate
+	return librpm.ExpandMacro(mutate)
 }
