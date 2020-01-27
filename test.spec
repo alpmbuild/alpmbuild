@@ -26,6 +26,7 @@ make DESTDIR=$PREFIX install
 
 %files
 %{_bindir}/hello
-%{_datadir}/info/hello.info.gz
-%{_datadir}/man/man1/hello.1.gz
+%{_datadir}/info/dir
+%{_datadir}/info/hello.info
+%{_datadir}/man/man1/hello.1
 %{_datadir}/locale/*/LC_MESSAGES/hello.mo

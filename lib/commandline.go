@@ -24,9 +24,12 @@ import (
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+var checkFiles *bool
+
 // Enter : Main function of alpmbuild's command line interface
 func Enter() {
 	file := flag.String("file", "", "The file to build.")
+	checkFiles = flag.Bool("strictFiles", true, "Strictly check %files for the main package")
 
 	flag.Parse()
 

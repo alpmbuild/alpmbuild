@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 )
 
@@ -33,7 +34,6 @@ import (
 // These directives aren't sections, but should cause the stages
 // to switch to NoStage
 var otherDirectives []string = []string{
-	"%files",
 	"%package",
 }
 
@@ -44,6 +44,7 @@ const (
 	PrepareStage
 	BuildStage
 	InstallStage
+	FileStage
 )
 
 type PackageContext struct {
@@ -64,6 +65,7 @@ type PackageContext struct {
 	// Nonstandard array fields
 	Sources []string
 	Patches []string
+	Files   []string
 
 	// Command fields
 	Commands struct {
@@ -225,6 +227,53 @@ func mapEnv(in string) string {
 	return ""
 }
 
+func (pkg PackageContext) VerifyFiles() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		panic("Could not get user's home directory.")
+	}
+
+	err = filepath.Walk(
+		filepath.Join(home, "alpmbuild/package"),
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				panic("Could not verify files: " + err.Error())
+			}
+			if file, err := os.Stat(path); err != nil || file.Mode().IsDir() {
+				return nil
+			}
+			truncPath := strings.TrimPrefix(
+				path,
+				filepath.Join(home, "alpmbuild/package"),
+			)
+			if truncPath == "" || truncPath == "/.MTREE" || truncPath == "/.PKGINFO" {
+				return nil
+			}
+			hasMatch := false
+			for _, listedFile := range pkg.Files {
+				regexString := strings.ReplaceAll(listedFile, "/", "\\/")
+				regexString = strings.ReplaceAll(listedFile, ".", "\\.")
+				regexString = strings.ReplaceAll(regexString, "*", ".*")
+				regex, err := regexp.Compile(regexString)
+				if err != nil {
+					panic("Malformed files listing: " + err.Error())
+				}
+				if regex.MatchString(truncPath) {
+					hasMatch = true
+				}
+			}
+			if !hasMatch {
+				panic("File not listed:\t" + truncPath)
+			}
+			return nil
+		},
+	)
+
+	if err != nil {
+		panic("Could not verify files: " + err.Error())
+	}
+}
+
 func (pkg PackageContext) BuildPackage() {
 	err := setupDirectories()
 	if err != nil {
@@ -276,4 +325,7 @@ func (pkg PackageContext) BuildPackage() {
 	pkg.GeneratePackageInfo()
 	pkg.GenerateMTree()
 	pkg.CompressPackage()
+	if *checkFiles {
+		pkg.VerifyFiles()
+	}
 }

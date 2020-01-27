@@ -153,6 +153,10 @@ func ParsePackage(data string) PackageContext {
 			currentStage = InstallStage
 			continue
 		}
+		if strings.HasPrefix(line, "%files") {
+			currentStage = FileStage
+			continue
+		}
 
 		// If we're in a stage, we want to append some commands to our list
 		switch currentStage {
@@ -162,6 +166,8 @@ func ParsePackage(data string) PackageContext {
 			lex.Commands.Build = append(lex.Commands.Build, evalInlineMacros(line, lex))
 		case InstallStage:
 			lex.Commands.Install = append(lex.Commands.Install, evalInlineMacros(line, lex))
+		case FileStage:
+			lex.Files = append(lex.Files, evalInlineMacros(line, lex))
 		}
 	}
 

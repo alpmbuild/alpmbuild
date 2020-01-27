@@ -28,6 +28,7 @@ import (
 var macros = map[string]string{
 	"_sysconfdir":     "/etc",
 	"_prefix":         "/usr",
+	"_datarootdir":    "%{_prefix}/share",
 	"_exec_prefix":    "%{_prefix}",
 	"_includedir":     "%{_prefix}/include",
 	"_bindir":         "%{_exec_prefix}/bin",
