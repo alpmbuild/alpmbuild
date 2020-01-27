@@ -137,7 +137,7 @@ func (pkg PackageContext) GenerateMTree() {
 
 	cmd := exec.Command("sh", "-c", `LANG=C bsdtar -c -f - --format=mtree \
 	--options='!all,use-set,type,uid,gid,mode,time,size,md5,sha256,link' \
-	--null --exclude .MTREE --files-from * | gzip -c -f -n > .MTREE`)
+	--null --exclude .MTREE * | gzip -c -f -n > .MTREE`)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		panic(fmt.Sprintf("Failed to generate mtree:\n%s", string(output)))
