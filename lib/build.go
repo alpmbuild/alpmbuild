@@ -51,6 +51,11 @@ func ParsePackage(data string) PackageContext {
 				lex.Sources = append(lex.Sources, evalInlineMacros(words[1], lex))
 			}
 
+			// And then our patches...
+			if strings.HasPrefix(strings.ToLower(words[0]), "patch") {
+				lex.Patches = append(lex.Patches, evalInlineMacros(words[1], lex))
+			}
+
 			// Now we produce macros based off our package context.
 
 			fields := reflect.TypeOf(lex)
@@ -119,9 +124,50 @@ func ParsePackage(data string) PackageContext {
 		}
 	}
 
+	currentStage := NoStage
+
+	// Now it's time for the sections.
+	for _, line := range strings.Split(strings.TrimSuffix(data, "\n"), "\n") {
+		// Let's ignore blank lines, since they're useless.
+		if line == "" {
+			continue
+		}
+
+		// Let's make sure we don't accidentally include directives in
+		// commands
+		if isStringInSlice(line, otherDirectives) {
+			currentStage = NoStage
+			continue
+		}
+
+		// Now we check to see if we're switching to a new stage
+		if strings.HasPrefix(line, "%prep") {
+			currentStage = PrepareStage
+			continue
+		}
+		if strings.HasPrefix(line, "%build") {
+			currentStage = BuildStage
+			continue
+		}
+		if strings.HasPrefix(line, "%install") {
+			currentStage = InstallStage
+			continue
+		}
+
+		// If we're in a stage, we want to append some commands to our list
+		switch currentStage {
+		case PrepareStage:
+			lex.Commands.Prepare = append(lex.Commands.Prepare, evalInlineMacros(line, lex))
+		case BuildStage:
+			lex.Commands.Build = append(lex.Commands.Build, evalInlineMacros(line, lex))
+		case InstallStage:
+			lex.Commands.Install = append(lex.Commands.Install, evalInlineMacros(line, lex))
+		}
+	}
+
 	fmt.Printf("Package struct:\n%s\n", prettyPrint(lex))
 
-	println(lex.GeneratePackageInfo())
+	lex.BuildPackage()
 
 	return lex
 }

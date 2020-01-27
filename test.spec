@@ -14,20 +14,18 @@ BuildRequires: make
 BuildRequires: gettext
 
 %prep
-%autosetup
+tar -xvf %{name}-%{version}.tar.gz
+cd %{name}-%{version}
 
 %build
-%configure
-%make_build
+./configure --prefix=/usr
+make
 
 %install
-%make_install
+make DESTDIR=$PREFIX install
 
 %files
 %{_bindir}/hello
 %{_datadir}/info/hello.info.gz
 %{_datadir}/man/man1/hello.1.gz
 %{_datadir}/locale/*/LC_MESSAGES/hello.mo
-
-%package info
-Summary: sweet flying pingas this package shouldn't exist
