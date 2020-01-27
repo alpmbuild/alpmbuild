@@ -10,4 +10,7 @@ func TestExpandMacro(t *testing.T) {
 	if ExpandMacro("%{_wonky}") != "%{_wonky}" {
 		t.Fail()
 	}
+	if ExpandMacro("%{?_libdir:cyanogen}") != "cyanogen" {
+		t.Fail()
+	}
 }
