@@ -3,8 +3,8 @@ alpmbuild
 
 build arch linux packages from rpm spec files.
 
-dependencies
-============
+golang dependencies
+===================
 
 only golang standard lib.
 
