@@ -37,7 +37,7 @@ func ParsePackage(data string) PackageContext {
 	currentSubpackage := ""
 	currentFilesSubpackage := ""
 
-	for _, line := range strings.Split(strings.TrimSuffix(data, "\n"), "\n") {
+	for currentLine, line := range strings.Split(strings.TrimSuffix(data, "\n"), "\n") {
 		// Blank lines are useless to us.
 		if line == "" {
 			continue
@@ -144,7 +144,7 @@ func ParsePackage(data string) PackageContext {
 				ifStage = NoStage
 				continue
 			case "%if":
-				if evalIf(line, lex) {
+				if evalIf(line, lex, currentLine+1) {
 					ifStage = IfTrueStage
 				} else {
 					ifStage = IfFalseStage
@@ -161,7 +161,7 @@ func ParsePackage(data string) PackageContext {
 				if ifStage == IfTrueStage {
 					ifStage = IfFalseStage
 				} else {
-					if evalIf(line, lex) {
+					if evalIf(line, lex, currentLine+1) {
 						ifStage = IfTrueStage
 					} else {
 						ifStage = IfFalseStage

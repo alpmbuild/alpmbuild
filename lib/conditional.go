@@ -17,7 +17,7 @@ func parseInts(string1, string2 string) (int64, int64) {
 	return before, after
 }
 
-func evalIf(inputLine string, pkg PackageContext) bool {
+func evalIf(inputLine string, pkg PackageContext, currentLine int) bool {
 	// %if first relation second
 	fields := strings.Fields(inputLine)
 
@@ -53,7 +53,12 @@ func evalIf(inputLine string, pkg PackageContext) bool {
 			relationResult = true
 		}
 	default:
-		outputErrorHighlight("Invalid comparison operand "+fields[2], inputLine, "Valid operands are ==, <=, >=, <, and >", strings.Index(inputLine, fields[2]), len(fields[2]))
+		outputErrorHighlight(
+			"Invalid comparison operand "+highlight(fields[2])+" on line "+strconv.Itoa(currentLine),
+			inputLine,
+			"Valid operands are ==, <=, >=, <, and >",
+			strings.Index(inputLine, fields[2]), len(fields[2]),
+		)
 	}
 
 	return relationResult
