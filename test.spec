@@ -8,7 +8,7 @@ URL:     https://gnu.org
 
 Source0: https://ftp.gnu.org/gnu/hello/%{name}-%{version}.tar.gz
 
-%if %{version}aa > 2
+%if %{version} == 2
 Requires: invalid
 %elif 1 == 3
 Requires: still-invalid
