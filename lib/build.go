@@ -120,7 +120,7 @@ func ParsePackage(data string) PackageContext {
 		// How about some conditional stuff?
 	Conditionals:
 		if strings.Contains(line, "%if") ||
-			strings.Contains(line, "%elseif") ||
+			strings.Contains(line, "%elif") ||
 			strings.Contains(line, "%else") ||
 			strings.Contains(line, "%endif") {
 
