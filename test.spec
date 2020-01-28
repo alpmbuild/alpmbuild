@@ -35,4 +35,9 @@ make DESTDIR=$PREFIX install
 %{_datadir}/info/dir
 %{_datadir}/info/hello.info
 %{_datadir}/man/man1/hello.1
+
+%package translationfiles
+Summary: Translation files for %{name}
+
+%files translationfiles
 %{_datadir}/locale/*/LC_MESSAGES/hello.mo

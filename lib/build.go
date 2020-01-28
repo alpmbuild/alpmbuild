@@ -34,6 +34,7 @@ func ParsePackage(data string) PackageContext {
 	currentStage := NoStage
 	ifStage := NoStage
 	currentSubpackage := ""
+	currentFilesSubpackage := ""
 
 	for _, line := range strings.Split(strings.TrimSuffix(data, "\n"), "\n") {
 		// Blank lines are useless to us.
@@ -160,7 +161,7 @@ func ParsePackage(data string) PackageContext {
 		// We need to be able to handle subpackages
 		if strings.Contains(line, "%package") {
 			if subpackageName, hasSubpackage := grabFlagFromString(line, "-n", []string{}); hasSubpackage {
-				currentSubpackage = lex.Name + "-" + subpackageName
+				currentSubpackage = subpackageName
 			} else {
 				if splitString := strings.Split(line, " "); len(splitString) >= 2 {
 					currentSubpackage = lex.Name + "-" + splitString[1]
@@ -170,7 +171,9 @@ func ParsePackage(data string) PackageContext {
 			}
 			if currentSubpackage != "" {
 				lex.Subpackages[currentSubpackage] = PackageContext{
-					Name: currentSubpackage,
+					Name:          currentSubpackage,
+					IsSubpackage:  true,
+					parentPackage: &lex,
 				}
 			}
 		}
@@ -198,6 +201,15 @@ func ParsePackage(data string) PackageContext {
 				continue
 			}
 			if strings.HasPrefix(line, "%files") {
+				if subpackageName, hasSubpackage := grabFlagFromString(line, "-n", []string{}); hasSubpackage {
+					currentFilesSubpackage = subpackageName
+				} else {
+					if splitString := strings.Split(line, " "); len(splitString) >= 2 {
+						currentFilesSubpackage = lex.Name + "-" + splitString[1]
+					} else {
+						currentFilesSubpackage = ""
+					}
+				}
 				currentStage = FileStage
 				continue
 			}
@@ -211,7 +223,17 @@ func ParsePackage(data string) PackageContext {
 			case InstallStage:
 				lex.Commands.Install = append(lex.Commands.Install, evalInlineMacros(line, lex))
 			case FileStage:
-				lex.Files = append(lex.Files, evalInlineMacros(line, lex))
+				if currentFilesSubpackage == "" {
+					lex.Files = append(lex.Files, evalInlineMacros(line, lex))
+				} else {
+					if val, ok := lex.Subpackages[currentFilesSubpackage]; ok {
+						subpkg := val
+						subpkg.Files = append(subpkg.Files, evalInlineMacros(line, lex))
+						lex.Subpackages[currentFilesSubpackage] = subpkg
+					} else {
+						panic("You cannot specify files for a subpackage that doesn't exist!")
+					}
+				}
 			}
 		}
 	}

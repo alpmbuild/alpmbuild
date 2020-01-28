@@ -29,6 +29,13 @@ import (
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+func defaultString(checkString, defaultString string) string {
+	if checkString == "" {
+		return defaultString
+	}
+	return checkString
+}
+
 func containsInsensitive(larger, substring string) bool {
 	return strings.Contains(strings.ToLower(larger), strings.ToLower(substring))
 }
