@@ -144,7 +144,7 @@ func ParsePackage(data string) PackageContext {
 				ifStage = NoStage
 				continue
 			case "%if":
-				if evalIf(line) {
+				if evalIf(line, lex) {
 					ifStage = IfTrueStage
 				} else {
 					ifStage = IfFalseStage
@@ -161,7 +161,7 @@ func ParsePackage(data string) PackageContext {
 				if ifStage == IfTrueStage {
 					ifStage = IfFalseStage
 				} else {
-					if evalIf(line) {
+					if evalIf(line, lex) {
 						ifStage = IfTrueStage
 					} else {
 						ifStage = IfFalseStage

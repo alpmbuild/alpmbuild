@@ -17,7 +17,7 @@ func parseInts(string1, string2 string) (int64, int64) {
 	return before, after
 }
 
-func evalIf(inputLine string) bool {
+func evalIf(inputLine string, pkg PackageContext) bool {
 	// %if first relation second
 	fields := strings.Fields(inputLine)
 
@@ -29,26 +29,26 @@ func evalIf(inputLine string) bool {
 
 	switch fields[2] {
 	case "==":
-		if fields[1] == fields[3] {
+		if evalInlineMacros(fields[1], pkg) == evalInlineMacros(fields[3], pkg) {
 			relationResult = true
 		}
 	case "<=":
-		before, after := parseInts(fields[1], fields[3])
+		before, after := parseInts(evalInlineMacros(fields[1], pkg), evalInlineMacros(fields[3], pkg))
 		if before <= after {
 			relationResult = true
 		}
 	case ">=":
-		before, after := parseInts(fields[1], fields[3])
+		before, after := parseInts(evalInlineMacros(fields[1], pkg), evalInlineMacros(fields[3], pkg))
 		if before >= after {
 			relationResult = true
 		}
 	case "<":
-		before, after := parseInts(fields[1], fields[3])
+		before, after := parseInts(evalInlineMacros(fields[1], pkg), evalInlineMacros(fields[3], pkg))
 		if before < after {
 			relationResult = true
 		}
 	case ">":
-		before, after := parseInts(fields[1], fields[3])
+		before, after := parseInts(evalInlineMacros(fields[1], pkg), evalInlineMacros(fields[3], pkg))
 		if before > after {
 			relationResult = true
 		}
