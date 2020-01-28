@@ -31,11 +31,23 @@ func ParsePackage(data string) PackageContext {
 
 	lex.Subpackages = make(map[string]PackageContext)
 
+	currentStage := NoStage
+	ifStage := NoStage
 	currentSubpackage := ""
 
-	// Let's parse the Key: Value things first
 	for _, line := range strings.Split(strings.TrimSuffix(data, "\n"), "\n") {
-		// We expect a ': ' to be present in any Key: Value line
+		// Blank lines are useless to us.
+		if line == "" {
+			continue
+		}
+
+		// If we're currently in an if statement that's false, we want to ignore
+		// everything else and go straight to checking for ifs
+		if ifStage == IfFalseStage {
+			goto Conditionals
+		}
+
+		// Let's parse the key-value lines first
 		if strings.Contains(line, ": ") {
 			// Split our line by whitespace
 			words := strings.Fields(line)
@@ -105,6 +117,46 @@ func ParsePackage(data string) PackageContext {
 			}
 		}
 
+		// How about some conditional stuff?
+	Conditionals:
+		if strings.Contains(line, "%if") ||
+			strings.Contains(line, "%elseif") ||
+			strings.Contains(line, "%else") ||
+			strings.Contains(line, "%endif") {
+
+			fields := strings.Fields(line)
+			switch fields[0] {
+			case "%endif":
+				ifStage = NoStage
+				continue
+			case "%if":
+				if evalIf(line) {
+					ifStage = IfTrueStage
+				} else {
+					ifStage = IfFalseStage
+				}
+				continue
+			case "%else":
+				if ifStage == IfTrueStage {
+					ifStage = IfFalseStage
+				} else {
+					ifStage = IfTrueStage
+				}
+				continue
+			case "%elseif":
+				if ifStage == IfTrueStage {
+					ifStage = IfFalseStage
+				} else {
+					if evalIf(line) {
+						ifStage = IfTrueStage
+					} else {
+						ifStage = IfFalseStage
+					}
+				}
+				continue
+			}
+		}
+
 		// We need to be able to handle subpackages
 		if strings.Contains(line, "%package") {
 			if subpackageName, hasSubpackage := grabFlagFromString(line, "-n", []string{}); hasSubpackage {
@@ -122,52 +174,45 @@ func ParsePackage(data string) PackageContext {
 				}
 			}
 		}
-	}
 
-	currentStage := NoStage
+		// Time for the sections!
+		{
+			// Let's make sure we don't accidentally include directives in
+			// commands
+			if isStringInSlice(line, otherDirectives) {
+				currentStage = NoStage
+				continue
+			}
 
-	// Now it's time for the sections.
-	for _, line := range strings.Split(strings.TrimSuffix(data, "\n"), "\n") {
-		// Let's ignore blank lines, since they're useless.
-		if line == "" {
-			continue
-		}
+			// Now we check to see if we're switching to a new stage
+			if strings.HasPrefix(line, "%prep") {
+				currentStage = PrepareStage
+				continue
+			}
+			if strings.HasPrefix(line, "%build") {
+				currentStage = BuildStage
+				continue
+			}
+			if strings.HasPrefix(line, "%install") {
+				currentStage = InstallStage
+				continue
+			}
+			if strings.HasPrefix(line, "%files") {
+				currentStage = FileStage
+				continue
+			}
 
-		// Let's make sure we don't accidentally include directives in
-		// commands
-		if isStringInSlice(line, otherDirectives) {
-			currentStage = NoStage
-			continue
-		}
-
-		// Now we check to see if we're switching to a new stage
-		if strings.HasPrefix(line, "%prep") {
-			currentStage = PrepareStage
-			continue
-		}
-		if strings.HasPrefix(line, "%build") {
-			currentStage = BuildStage
-			continue
-		}
-		if strings.HasPrefix(line, "%install") {
-			currentStage = InstallStage
-			continue
-		}
-		if strings.HasPrefix(line, "%files") {
-			currentStage = FileStage
-			continue
-		}
-
-		// If we're in a stage, we want to append some commands to our list
-		switch currentStage {
-		case PrepareStage:
-			lex.Commands.Prepare = append(lex.Commands.Prepare, evalInlineMacros(line, lex))
-		case BuildStage:
-			lex.Commands.Build = append(lex.Commands.Build, evalInlineMacros(line, lex))
-		case InstallStage:
-			lex.Commands.Install = append(lex.Commands.Install, evalInlineMacros(line, lex))
-		case FileStage:
-			lex.Files = append(lex.Files, evalInlineMacros(line, lex))
+			// If we're in a stage, we want to append some commands to our list
+			switch currentStage {
+			case PrepareStage:
+				lex.Commands.Prepare = append(lex.Commands.Prepare, evalInlineMacros(line, lex))
+			case BuildStage:
+				lex.Commands.Build = append(lex.Commands.Build, evalInlineMacros(line, lex))
+			case InstallStage:
+				lex.Commands.Install = append(lex.Commands.Install, evalInlineMacros(line, lex))
+			case FileStage:
+				lex.Files = append(lex.Files, evalInlineMacros(line, lex))
+			}
 		}
 	}
 

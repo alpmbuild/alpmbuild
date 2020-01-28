@@ -45,6 +45,9 @@ const (
 	BuildStage
 	InstallStage
 	FileStage
+
+	IfTrueStage
+	IfFalseStage
 )
 
 type PackageContext struct {

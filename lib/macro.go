@@ -39,6 +39,7 @@ var macros = map[string]string{
 	"_localstatedir":  "/var",
 	"_sharedstatedir": "/var/lib",
 	"_lib":            "lib",
+	"alpmbuild":       version,
 }
 
 var expanded = false

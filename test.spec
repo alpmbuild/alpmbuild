@@ -8,7 +8,13 @@ URL:     https://gnu.org
 
 Source0: https://ftp.gnu.org/gnu/hello/%{name}-%{version}.tar.gz
 
+%if 1 == 2
+Requires: invalid
+%elseif 1 == 3
+Requires: still-invalid
+%else
 Requires: base
+%endif
 BuildRequires: gcc
 BuildRequires: make
 BuildRequires: gettext
