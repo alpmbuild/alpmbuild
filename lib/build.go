@@ -49,7 +49,19 @@ func ParsePackage(data string) PackageContext {
 			goto Conditionals
 		}
 
-		// Let's parse the key-value lines first
+		// Let's look at #!alpmbuild directives
+		if strings.HasPrefix(line, "#!alpmbuild") {
+			fields := strings.Fields(line)
+
+			if len(fields) >= 2 {
+				switch fields[1] {
+				case "NoFileCheck":
+					*checkFiles = false
+				}
+			}
+		}
+
+		// Let's parse the key-value lines
 		if strings.Contains(line, ": ") {
 			// Split our line by whitespace
 			words := strings.Fields(line)
