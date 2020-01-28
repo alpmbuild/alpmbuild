@@ -53,7 +53,7 @@ func evalIf(inputLine string) bool {
 			relationResult = true
 		}
 	default:
-		outputError("Invalid comparison operand: " + fields[2])
+		outputErrorHighlight("Invalid comparison operand "+fields[2], inputLine, "Valid operands are ==, <=, >=, <, and >", strings.Index(inputLine, fields[2]), len(fields[2]))
 	}
 
 	return relationResult

@@ -3,6 +3,7 @@ package lib
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 func highlight(message string) string {
@@ -12,19 +13,56 @@ func highlight(message string) string {
 	return message
 }
 
-func outputStatus(message string) {
+func bold(message string) string {
 	if IsStdoutTty() && *useColours {
-		fmt.Printf("\033[1;32m==>\033[0m \033[1;37m%s\033[0m\n", message)
+		return fmt.Sprintf("\033[1;37m%s\033[0m", message)
 	} else {
-		fmt.Printf("==> %s\n", message)
+		return message
 	}
 }
 
-func outputError(message string) {
+func green(message string) string {
 	if IsStdoutTty() && *useColours {
-		fmt.Printf("\033[1;31mERROR ==>\033[0m \033[1;37m%s\033[0m\n", message)
+		return fmt.Sprintf("\033[1;32m%s\033[0m", message)
 	} else {
-		fmt.Printf("ERROR ==> %s\n", message)
+		return message
+	}
+}
+
+func red(message string) string {
+	if IsStdoutTty() && *useColours {
+		return fmt.Sprintf("\033[1;31m%s\033[0m", message)
+	} else {
+		return message
+	}
+}
+
+func outputStatus(message string) {
+	println(green("==> ") + bold(message))
+}
+
+func outputError(message string) {
+	println(red("ERROR ==> ") + bold(message))
+	os.Exit(1)
+}
+
+func outputErrorHighlight(message, lineToHighlight, additionalMessage string, startIndex, length int) {
+	lineToHighlight = strings.Replace(lineToHighlight, lineToHighlight[startIndex:startIndex+length], highlight(lineToHighlight[startIndex:startIndex+length]), 1)
+	println(red("ERROR ==> ") + bold(message))
+	fmt.Printf(
+		"%s%s\n%s%s%s\n",
+		strings.Repeat(" ", len("ERROR ==> ")),
+		bold(lineToHighlight),
+		strings.Repeat(" ", len("ERROR ==> ")),
+		strings.Repeat(" ", startIndex),
+		strings.Repeat(red("^"), length),
+	)
+	if additionalMessage != "" {
+		fmt.Printf(
+			"\n%s%s\n",
+			strings.Repeat(" ", len("ERROR ==> ")),
+			bold(additionalMessage),
+		)
 	}
 	os.Exit(1)
 }
