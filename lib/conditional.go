@@ -8,11 +8,11 @@ import (
 func parseInts(string1, string2 string) (int64, int64) {
 	before, err := strconv.ParseInt(string1, 10, 64)
 	if err != nil {
-		panic("Error parsing integer: " + err.Error())
+		outputError("Error parsing integer: " + err.Error())
 	}
 	after, err := strconv.ParseInt(string2, 10, 64)
 	if err != nil {
-		panic("Error parsing integer: " + err.Error())
+		outputError("Error parsing integer: " + err.Error())
 	}
 	return before, after
 }
@@ -53,7 +53,7 @@ func evalIf(inputLine string) bool {
 			relationResult = true
 		}
 	default:
-		panic("Invalid comparison operand: " + fields[2])
+		outputError("Invalid comparison operand: " + fields[2])
 	}
 
 	return relationResult

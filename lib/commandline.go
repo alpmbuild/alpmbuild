@@ -25,11 +25,15 @@ import (
 */
 
 var checkFiles *bool
+var hideCommandOutput *bool
+var useColours *bool
 
 // Enter : Main function of alpmbuild's command line interface
 func Enter() {
 	file := flag.String("file", "", "The file to build.")
 	checkFiles = flag.Bool("strictFiles", true, "Strictly check %files for the main package")
+	hideCommandOutput = flag.Bool("hideCommandOutput", false, "Hide package command output")
+	useColours = flag.Bool("useColours", true, "Use colours for output.")
 
 	flag.Parse()
 

@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"fmt"
 	"io/ioutil"
 	"reflect"
 	"strings"
@@ -27,6 +26,8 @@ import (
 */
 
 func ParsePackage(data string) PackageContext {
+	outputStatus("Parsing package...")
+
 	lex := PackageContext{}
 
 	lex.Subpackages = make(map[string]PackageContext)
@@ -166,7 +167,7 @@ func ParsePackage(data string) PackageContext {
 				if splitString := strings.Split(line, " "); len(splitString) >= 2 {
 					currentSubpackage = lex.Name + "-" + splitString[1]
 				} else {
-					panic("%package does not have a name!")
+					outputError("%package needs to have a name")
 				}
 			}
 			if currentSubpackage != "" {
@@ -231,14 +232,12 @@ func ParsePackage(data string) PackageContext {
 						subpkg.Files = append(subpkg.Files, evalInlineMacros(line, lex))
 						lex.Subpackages[currentFilesSubpackage] = subpkg
 					} else {
-						panic("You cannot specify files for a subpackage that doesn't exist!")
+						outputError("You cannot specify files for a subpackage if the subpackage has not been declared")
 					}
 				}
 			}
 		}
 	}
-
-	fmt.Printf("Package struct:\n%s\n", prettyPrint(lex))
 
 	lex.BuildPackage()
 
@@ -247,6 +246,7 @@ func ParsePackage(data string) PackageContext {
 
 // Build : Build a specfile, generating an Arch package.
 func Build(pathToRecipe string) error {
+	outputStatus("Reading specfile from " + pathToRecipe + "...")
 	data, err := ioutil.ReadFile(pathToRecipe)
 	if err != nil {
 		return err

@@ -84,9 +84,10 @@ type PackageContext struct {
 }
 
 func (pkg PackageContext) GeneratePackageInfo() {
+	outputStatus("Generating package info for " + highlight(pkg.Name) + "...")
 	home, err := os.UserHomeDir()
 	if err != nil {
-		panic(fmt.Sprintf("Failed to generate pkginfo:\n%s", err.Error()))
+		outputError(fmt.Sprintf("Failed to generate pkginfo:\n%s", err.Error()))
 	}
 	pkgdir := ""
 	if !pkg.IsSubpackage {
@@ -148,14 +149,15 @@ func (pkg PackageContext) GeneratePackageInfo() {
 
 	err = ioutil.WriteFile(filepath.Join(pkgdir, ".PKGINFO"), []byte(packageInfo), 0644)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to generate pkginfo:\n%s", err.Error()))
+		outputError(fmt.Sprintf("Failed to generate pkginfo:\n%s", err.Error()))
 	}
 }
 
 func (pkg PackageContext) GenerateMTree() {
+	outputStatus("Generating .MTREE for " + highlight(pkg.Name) + "...")
 	home, err := os.UserHomeDir()
 	if err != nil {
-		panic(fmt.Sprintf("Failed to generate mtree:\n%s", err.Error()))
+		outputError(fmt.Sprintf("Failed to generate mtree:\n%s", err.Error()))
 	}
 	if !pkg.IsSubpackage {
 		os.Chdir(filepath.Join(home, "alpmbuild/package"))
@@ -168,11 +170,12 @@ func (pkg PackageContext) GenerateMTree() {
 	--null --exclude .MTREE * | gzip -c -f -n > .MTREE`)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		panic(fmt.Sprintf("Failed to generate mtree:\n%s", string(output)))
+		outputError(fmt.Sprintf("Failed to generate mtree:\n%s", string(output)))
 	}
 }
 
 func setupDirectories() error {
+	outputStatus("Setting up directories...")
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -189,6 +192,7 @@ func setupDirectories() error {
 }
 
 func (pkg PackageContext) setupSources() error {
+	outputStatus("Verifiying sources...")
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -196,11 +200,13 @@ func (pkg PackageContext) setupSources() error {
 
 	handleSource := func(url string) error {
 		if isValidUrl(url) {
+			outputStatus("Downloading " + highlight(url) + "...")
 			err := downloadFile(filepath.Join(home, "alpmbuild/buildroot", path.Base(url)), url)
 			if err != nil {
 				return err
 			}
 		} else {
+			outputStatus("Copying " + highlight(url) + " to build directory...")
 			_, err := copyFile(filepath.Join(home, "alpmbuild/sources", url), filepath.Join(home, "alpmbuild/buildroot", url))
 			if err != nil {
 				return err
@@ -226,9 +232,10 @@ func (pkg PackageContext) setupSources() error {
 }
 
 func (pkg PackageContext) CompressPackage() {
+	outputStatus("Compressing " + highlight(pkg.Name) + " into a package...")
 	home, err := os.UserHomeDir()
 	if err != nil {
-		panic("Could not get user's home directory.")
+		outputError("Could not get user's home directory.")
 	}
 	packagesDir := filepath.Join(home, "alpmbuild/packages")
 	if !pkg.IsSubpackage {
@@ -240,14 +247,14 @@ func (pkg PackageContext) CompressPackage() {
 	cmd := exec.Command("sh", "-c", "tar -czvf"+packagesDir+"/"+pkg.Name+".pkg.tar.gz * .PKGINFO .MTREE")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		panic(fmt.Sprintf("Creating tarball failed:\n%s", string(output)))
+		outputError(fmt.Sprintf("Creating tarball failed:\n%s", string(output)))
 	}
 }
 
 func mapEnv(in string) string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		panic("Could not get user's home directory.")
+		outputError("Could not get user's home directory.")
 	}
 
 	switch in {
@@ -259,9 +266,10 @@ func mapEnv(in string) string {
 }
 
 func (pkg PackageContext) VerifyFiles() {
+	outputStatus("Checking files of " + highlight(pkg.Name) + "...")
 	home, err := os.UserHomeDir()
 	if err != nil {
-		panic("Could not get user's home directory.")
+		outputError("Could not get user's home directory.")
 	}
 
 	pathToWalk := ""
@@ -276,7 +284,7 @@ func (pkg PackageContext) VerifyFiles() {
 		pathToWalk,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				panic("Could not verify files: " + err.Error())
+				outputError("Could not verify files: " + err.Error())
 			}
 			if file, err := os.Stat(path); err != nil || file.Mode().IsDir() {
 				return nil
@@ -295,7 +303,7 @@ func (pkg PackageContext) VerifyFiles() {
 				regexString = strings.ReplaceAll(regexString, "*", ".*")
 				regex, err := regexp.Compile(regexString)
 				if err != nil {
-					panic("Malformed files listing: " + err.Error())
+					outputError("Malformed files listing: " + err.Error())
 				}
 				if regex.MatchString(truncPath) {
 					hasMatch = true
@@ -308,7 +316,7 @@ func (pkg PackageContext) VerifyFiles() {
 					regexString = strings.ReplaceAll(regexString, "*", ".*")
 					regex, err := regexp.Compile(regexString)
 					if err != nil {
-						panic("Malformed files listing: " + err.Error())
+						outputError("Malformed files listing: " + err.Error())
 					}
 					if regex.MatchString(truncPath) {
 						hasMatch = true
@@ -316,21 +324,22 @@ func (pkg PackageContext) VerifyFiles() {
 				}
 			}
 			if !hasMatch {
-				panic("File not listed:\t" + truncPath)
+				outputError("File not listed:\t" + truncPath)
 			}
 			return nil
 		},
 	)
 
 	if err != nil {
-		panic("Could not verify files: " + err.Error())
+		outputError("Could not verify files: " + err.Error())
 	}
 }
 
 func (pkg PackageContext) TakeFilesFromParent() {
+	outputStatus("Moving files from " + highlight(pkg.parentPackage.Name) + " to " + highlight(pkg.Name) + "...")
 	home, err := os.UserHomeDir()
 	if err != nil {
-		panic("Could not get user's home directory.")
+		outputError("Could not get user's home directory.")
 	}
 	path := filepath.Join(home, "alpmbuild/subpackages", pkg.Name)
 	os.MkdirAll(path, os.ModePerm)
@@ -339,7 +348,7 @@ func (pkg PackageContext) TakeFilesFromParent() {
 		globPath := filepath.Join(home, "alpmbuild/package", file)
 		files, err := filepath.Glob(globPath)
 		if err != nil {
-			panic("Bad globbing: " + err.Error())
+			outputError("Bad globbing: " + err.Error())
 		}
 		for _, fileToCopy := range files {
 			fromPackageRootPath := strings.TrimPrefix(fileToCopy, filepath.Join(home, "alpmbuild/package"))
@@ -347,25 +356,26 @@ func (pkg PackageContext) TakeFilesFromParent() {
 			os.MkdirAll(filepath.Join(path, dirName), os.ModePerm)
 			err = os.Rename(fileToCopy, filepath.Join(path, fromPackageRootPath))
 			if err != nil {
-				panic("Failed to take file from parent package: " + err.Error())
+				outputError("Failed to take file from parent package: " + err.Error())
 			}
 		}
 	}
 }
 
 func (pkg PackageContext) BuildPackage() {
+	outputStatus("Building package " + highlight(pkg.Name) + "...")
 	err := setupDirectories()
 	if err != nil {
-		panic(fmt.Sprintf("Error setting up directories:\n\t%s", err.Error()))
+		outputError(fmt.Sprintf("Error setting up directories:\n\t%s", err.Error()))
 	}
 	err = pkg.setupSources()
 	if err != nil {
-		panic(fmt.Sprintf("Error setting up sources:\n\t%s", err.Error()))
+		outputError(fmt.Sprintf("Error setting up sources:\n\t%s", err.Error()))
 	}
 
 	home, err := os.UserHomeDir()
 	if err != nil {
-		panic("Could not get user's home directory.")
+		outputError("Could not get user's home directory.")
 	}
 
 	os.Chdir(filepath.Join(home, "alpmbuild/buildroot"))
@@ -376,27 +386,34 @@ func (pkg PackageContext) BuildPackage() {
 		if args[0] == "cd" {
 			wd, err := os.Getwd()
 			if err != nil {
-				panic(fmt.Sprintf("Failed to get working directory:\n\t%s", err.Error()))
+				outputError(fmt.Sprintf("Failed to get working directory:\n\t%s", err.Error()))
 			}
 			os.Chdir(path.Join(wd, args[1]))
 			return
 		}
 
 		cmd := exec.Command("fakeroot", args...)
+		if !*hideCommandOutput {
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+		}
 
-		output, err := cmd.CombinedOutput()
+		err := cmd.Run()
 		if err != nil {
-			panic(fmt.Sprintf("Command failed:\n\t%s\n\n%s", strings.Join(args, " "), string(output)))
+			outputError(fmt.Sprintf("Command failed:\n\t%s", strings.Join(args, " ")))
 		}
 	}
 
 	// Prepare commands.
+	outputStatus("Running prepare commands...")
 	for _, command := range pkg.Commands.Prepare {
 		safeRun(command)
 	}
+	outputStatus("Running build commands...")
 	for _, command := range pkg.Commands.Build {
 		safeRun(command)
 	}
+	outputStatus("Running install commands...")
 	for _, command := range pkg.Commands.Install {
 		safeRun(command)
 	}
