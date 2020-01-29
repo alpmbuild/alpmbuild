@@ -3,8 +3,11 @@ package lib
 import (
 	"io/ioutil"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/appadeia/alpmbuild/lib/librpm"
 )
 
 /*
@@ -43,6 +46,34 @@ mainParseLoop:
 		// Blank lines are useless to us.
 		if line == "" {
 			continue
+		}
+
+		// Let's see if any of our macros don't expand...
+		{
+			// This regex will match data inside %{data}
+			expanded := evalInlineMacros(line, lex)
+			grabMacroRegex := regexp.MustCompile(`%{(.+?)}`)
+			for _, match := range grabMacroRegex.FindAll([]byte(expanded), -1) {
+				matchString := string(match)
+
+				macros := librpm.DumpMacroNamesAsString()
+
+				if len(macros) > 0 {
+					outputWarningHighlight(
+						"Macro not expanded: "+highlight(matchString),
+						line,
+						"Did you mean to use "+highlight("%{"+ClosestString(matchString, macros)+"}")+"?",
+						strings.Index(line, matchString), len(matchString),
+					)
+				} else {
+					outputWarningHighlight(
+						"Macro not expanded: "+highlight(matchString),
+						line,
+						"",
+						strings.Index(line, matchString), len(matchString),
+					)
+				}
+			}
 		}
 
 		// If we're currently in an if statement that's false, we want to ignore

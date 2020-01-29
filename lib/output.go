@@ -37,6 +37,14 @@ func red(message string) string {
 	}
 }
 
+func yellow(message string) string {
+	if IsStdoutTty() && *useColours {
+		return fmt.Sprintf("\033[1;93m%s\033[0m", message)
+	} else {
+		return message
+	}
+}
+
 func outputStatus(message string) {
 	println(green("==> ") + bold(message))
 }
@@ -65,4 +73,24 @@ func outputErrorHighlight(message, lineToHighlight, additionalMessage string, st
 		)
 	}
 	os.Exit(1)
+}
+
+func outputWarningHighlight(message, lineToHighlight, additionalMessage string, startIndex, length int) {
+	lineToHighlight = strings.Replace(lineToHighlight, lineToHighlight[startIndex:startIndex+length], highlight(lineToHighlight[startIndex:startIndex+length]), 1)
+	println(yellow("WARNING ==> ") + bold(message))
+	fmt.Printf(
+		"%s%s\n%s%s%s\n",
+		strings.Repeat(" ", len("WARNING ==> ")),
+		bold(lineToHighlight),
+		strings.Repeat(" ", len("WARNING ==> ")),
+		strings.Repeat(" ", startIndex),
+		strings.Repeat(yellow("^"), length),
+	)
+	if additionalMessage != "" {
+		fmt.Printf(
+			"\n%s%s\n",
+			strings.Repeat(" ", len("WARNING ==> ")),
+			bold(additionalMessage),
+		)
+	}
 }
