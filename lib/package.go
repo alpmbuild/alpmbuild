@@ -60,6 +60,7 @@ var PossibleKeys = []string{
 	"Recommends:",
 	"Version:",
 	"Release:",
+	"Epoch:",
 }
 
 var PossibleDirectives = []string{
@@ -73,6 +74,7 @@ type PackageContext struct {
 	Summary string `macro:"summary" key:"summary:" pkginfo:"pkgdesc"`
 	License string `macro:"license" key:"license:" pkginfo:"pkglicense"`
 	URL     string `macro:"url" key:"url:" pkginfo:"url"`
+	Epoch   string `macro:"epoch" key:"epoch:" pkginfo:"epoch"`
 
 	// Array fields with relatively standard behaviour.
 	Requires      []string `keyArray:"requires:" pkginfo:"depend"`
@@ -102,8 +104,24 @@ type PackageContext struct {
 	Reasons       map[string]string
 }
 
+func (pkg PackageContext) GetNevra() string {
+	uname, _ := exec.Command("uname", "-m").CombinedOutput()
+	unameString := strings.TrimSpace(string(uname))
+	if pkg.Epoch != "" {
+		return fmt.Sprintf("%s-%s:%s-%s-%s", pkg.Name, pkg.Epoch, pkg.Version, pkg.Release, unameString)
+	}
+	return fmt.Sprintf("%s-%s-%s-%s", pkg.Name, pkg.Version, pkg.Release, unameString)
+}
+
+func (pkg PackageContext) GetNevr() string {
+	if pkg.Epoch != "" {
+		return fmt.Sprintf("%s-%s:%s-%s", pkg.Name, pkg.Epoch, pkg.Version, pkg.Release)
+	}
+	return fmt.Sprintf("%s-%s-%s", pkg.Name, pkg.Version, pkg.Release)
+}
+
 func (pkg PackageContext) GeneratePackageInfo() {
-	outputStatus("Generating package info for " + highlight(pkg.Name) + "...")
+	outputStatus("Generating package info for " + highlight(pkg.GetNevra()) + "...")
 	home, err := os.UserHomeDir()
 	if err != nil {
 		outputError(fmt.Sprintf("Failed to generate pkginfo:\n%s", err.Error()))
@@ -112,7 +130,7 @@ func (pkg PackageContext) GeneratePackageInfo() {
 	if !pkg.IsSubpackage {
 		pkgdir = filepath.Join(home, "alpmbuild/package")
 	} else {
-		pkgdir = filepath.Join(home, "alpmbuild/subpackages", pkg.Name)
+		pkgdir = filepath.Join(home, "alpmbuild/subpackages", pkg.GetNevra())
 	}
 	os.Chdir(pkgdir)
 
@@ -174,6 +192,11 @@ func (pkg PackageContext) GeneratePackageInfo() {
 		}
 	}
 
+	uname, _ := exec.Command("uname", "-m").CombinedOutput()
+	unameString := strings.TrimSpace(string(uname))
+
+	packageInfo = fmt.Sprintf("%s\narch = %s", packageInfo, unameString)
+
 	err = ioutil.WriteFile(filepath.Join(pkgdir, ".PKGINFO"), []byte(packageInfo), 0644)
 	if err != nil {
 		outputError(fmt.Sprintf("Failed to generate pkginfo:\n%s", err.Error()))
@@ -181,7 +204,7 @@ func (pkg PackageContext) GeneratePackageInfo() {
 }
 
 func (pkg PackageContext) GenerateMTree() {
-	outputStatus("Generating .MTREE for " + highlight(pkg.Name) + "...")
+	outputStatus("Generating .MTREE for " + highlight(pkg.GetNevra()) + "...")
 	home, err := os.UserHomeDir()
 	if err != nil {
 		outputError(fmt.Sprintf("Failed to generate mtree:\n%s", err.Error()))
@@ -189,7 +212,7 @@ func (pkg PackageContext) GenerateMTree() {
 	if !pkg.IsSubpackage {
 		os.Chdir(filepath.Join(home, "alpmbuild/package"))
 	} else {
-		os.Chdir(filepath.Join(home, "alpmbuild/subpackages", pkg.Name))
+		os.Chdir(filepath.Join(home, "alpmbuild/subpackages", pkg.GetNevra()))
 	}
 
 	cmd := exec.Command("sh", "-c", `LANG=C bsdtar -c -f - --format=mtree \
@@ -263,7 +286,7 @@ func (pkg PackageContext) setupSources() error {
 }
 
 func (pkg PackageContext) CompressPackage() {
-	outputStatus("Compressing " + highlight(pkg.Name) + " into a package...")
+	outputStatus("Compressing " + highlight(pkg.GetNevra()) + " into a package...")
 	home, err := os.UserHomeDir()
 	if err != nil {
 		outputError("Could not get user's home directory.")
@@ -272,10 +295,10 @@ func (pkg PackageContext) CompressPackage() {
 	if !pkg.IsSubpackage {
 		os.Chdir(filepath.Join(home, "alpmbuild/package"))
 	} else {
-		os.Chdir(filepath.Join(home, "alpmbuild/subpackages", pkg.Name))
+		os.Chdir(filepath.Join(home, "alpmbuild/subpackages", pkg.GetNevra()))
 	}
 
-	cmd := exec.Command("sh", "-c", "tar -Izstd -cvf"+packagesDir+"/"+pkg.Name+".pkg.tar.zst * .PKGINFO .MTREE")
+	cmd := exec.Command("sh", "-c", "tar -Izstd -cvf"+packagesDir+"/"+pkg.GetNevra()+".pkg.tar.zst * .PKGINFO .MTREE")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		outputError(fmt.Sprintf("Creating tarball failed:\n%s", string(output)))
@@ -297,7 +320,7 @@ func mapEnv(in string) string {
 }
 
 func (pkg PackageContext) VerifyFiles() {
-	outputStatus("Checking files of " + highlight(pkg.Name) + "...")
+	outputStatus("Checking files of " + highlight(pkg.GetNevra()) + "...")
 	home, err := os.UserHomeDir()
 	if err != nil {
 		outputError("Could not get user's home directory.")
@@ -308,7 +331,7 @@ func (pkg PackageContext) VerifyFiles() {
 	if !pkg.IsSubpackage {
 		pathToWalk = filepath.Join(home, "alpmbuild/package")
 	} else {
-		pathToWalk = filepath.Join(home, "alpmbuild/subpackages", pkg.Name)
+		pathToWalk = filepath.Join(home, "alpmbuild/subpackages", pkg.GetNevra())
 	}
 
 	err = filepath.Walk(
@@ -367,12 +390,12 @@ func (pkg PackageContext) VerifyFiles() {
 }
 
 func (pkg PackageContext) TakeFilesFromParent() {
-	outputStatus("Moving files from " + highlight(pkg.parentPackage.Name) + " to " + highlight(pkg.Name) + "...")
+	outputStatus("Moving files from " + highlight(pkg.parentPackage.Name) + " to " + highlight(pkg.GetNevra()) + "...")
 	home, err := os.UserHomeDir()
 	if err != nil {
 		outputError("Could not get user's home directory.")
 	}
-	path := filepath.Join(home, "alpmbuild/subpackages", pkg.Name)
+	path := filepath.Join(home, "alpmbuild/subpackages", pkg.GetNevra())
 	os.MkdirAll(path, os.ModePerm)
 
 	for _, file := range pkg.Files {
@@ -413,27 +436,44 @@ func (pkg PackageContext) GenerateSourcePackage() {
 		outputError("There was an error copying the specfile into the source package:\n\t" + err.Error())
 	}
 	os.Chdir(filepath.Join(home, "alpmbuild"))
-	err = os.RemoveAll(filepath.Join(home, "alpmbuild", pkg.Name))
+	err = os.RemoveAll(filepath.Join(home, "alpmbuild", pkg.GetNevr()))
 	if err != nil {
 		outputError("Failed to clean up source package directory: " + err.Error())
 	}
-	err = os.Rename(filepath.Join(home, "alpmbuild/sourcepackages"), filepath.Join(home, "alpmbuild", pkg.Name))
+	err = os.Rename(filepath.Join(home, "alpmbuild/sourcepackages"), filepath.Join(home, "alpmbuild", pkg.GetNevr()))
 	if err != nil {
 		outputError("Failed to rename source package directory: " + err.Error())
 	}
-	err = exec.Command("tar", "-Izstd", "-cvf", filepath.Join(home, "alpmbuild", "packages", pkg.Name+".alpmsrc.pkg.tar.zst"), pkg.Name).Run()
+	err = exec.Command("tar", "-Izstd", "-cvf", filepath.Join(home, "alpmbuild", "packages", pkg.GetNevr()+".alpmsrc.pkg.tar.zst"), pkg.GetNevr()).Run()
 	if err != nil {
 		outputError("Failed to compress source package: " + err.Error())
 	}
-	err = os.RemoveAll(filepath.Join(home, "alpmbuild", pkg.Name))
+	err = os.RemoveAll(filepath.Join(home, "alpmbuild", pkg.GetNevr()))
 	if err != nil {
 		outputError("Failed to clean up source package directory: " + err.Error())
 	}
 	outputStatus("Generated source package")
 }
 
+func (pkg *PackageContext) InheritFromParent() {
+	if pkg.IsSubpackage {
+		if pkg.Epoch == "" {
+			pkg.Epoch = pkg.parentPackage.Epoch
+		}
+		if pkg.Version == "" {
+			pkg.Version = pkg.parentPackage.Version
+		}
+		if pkg.Release == "" {
+			pkg.Release = pkg.parentPackage.Release
+		}
+		if pkg.License == "" {
+			pkg.License = pkg.parentPackage.License
+		}
+	}
+}
+
 func (pkg PackageContext) BuildPackage() {
-	outputStatus("Building package " + highlight(pkg.Name) + "...")
+	outputStatus("Building package " + highlight(pkg.GetNevra()) + "...")
 	err := setupDirectories()
 	if err != nil {
 		outputError(fmt.Sprintf("Error setting up directories:\n\t%s", err.Error()))
@@ -489,6 +529,7 @@ func (pkg PackageContext) BuildPackage() {
 	}
 
 	for _, subpackage := range pkg.Subpackages {
+		subpackage.InheritFromParent()
 		subpackage.TakeFilesFromParent()
 		subpackage.GeneratePackageInfo()
 		subpackage.GenerateMTree()
