@@ -3,6 +3,9 @@ package lib
 import (
 	"flag"
 	"os"
+	"strings"
+
+	"github.com/appadeia/alpmbuild/lib/librpm"
 )
 
 /*
@@ -27,22 +30,54 @@ import (
 var checkFiles *bool
 var hideCommandOutput *bool
 var useColours *bool
+var generateSourcePackage *bool
+var buildFile *string
+
+type arrayFlag []string
+
+func (i *arrayFlag) String() string {
+	return strings.Join(*i, " ")
+}
+
+func (i *arrayFlag) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
 
 // Enter : Main function of alpmbuild's command line interface
 func Enter() {
-	file := flag.String("file", "", "The file to build.")
+	// Alpmbuild-unique flags
+	buildFile = flag.String("file", "", "The file to build.")
 	checkFiles = flag.Bool("strictFiles", true, "Strictly check %files for the main package")
 	hideCommandOutput = flag.Bool("hideCommandOutput", false, "Hide package command output")
 	useColours = flag.Bool("useColours", true, "Use colours for output.")
+	generateSourcePackage = flag.Bool("generateSourcePackage", true, "Generate a source package")
+
+	var macros arrayFlag
+
+	flag.Var(&macros, "D", "Define a macro with MACRO EXPR")
+	flag.Var(&macros, "define", "Define a macro with MACRO EXPR")
+
+	// Flags that mimic behaviour of rpmbuild
+	ba := flag.String("ba", "", "Copies rpmbuild -ba's behaviour")
 
 	flag.Parse()
 
-	if *file == "" {
+	if *ba != "" {
+		*buildFile = *ba
+		*generateSourcePackage = true
+	}
+
+	for _, macro := range macros {
+		librpm.DefineMacro(macro, 256)
+	}
+
+	if *buildFile == "" {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
-	err := Build(*file)
+	err := Build(*buildFile)
 	if err != nil {
 		println(err.Error())
 	}

@@ -192,8 +192,12 @@ func setupDirectories() error {
 		return err
 	}
 
-	for _, dir := range []string{"alpmbuild/buildroot", "alpmbuild/package", "alpmbuild/sources", "alpmbuild/packages", "alpmbuild/subpackages"} {
+	for _, dir := range []string{"alpmbuild/buildroot", "alpmbuild/package", "alpmbuild/sources", "alpmbuild/packages", "alpmbuild/subpackages", "alpmbuild/sourcepackages"} {
 		err = os.MkdirAll(filepath.Join(home, dir), os.ModePerm)
+		if dir == "alpmbuild/sourcepackages" {
+			os.RemoveAll(filepath.Join(home, dir))
+			err = os.MkdirAll(filepath.Join(home, dir), os.ModePerm)
+		}
 		if err != nil {
 			return err
 		}
@@ -373,6 +377,24 @@ func (pkg PackageContext) TakeFilesFromParent() {
 	}
 }
 
+func (pkg PackageContext) GenerateSourcePackage() {
+	outputStatus("Generating source package... [TODO: Finish source package generation]")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		outputError("There was an error obtaining the home directory")
+	}
+	for _, source := range pkg.Sources {
+		if !isValidUrl(source) {
+			_, err := copyFile(filepath.Join(home, "alpmbuild/sources", source), filepath.Join(home, "alpmbuild/sourcepackages", source))
+			if err != nil {
+				outputError("There was an error copying sources into the source package")
+			}
+		}
+	}
+	os.Chdir(filepath.Join(home, "alpmbuild"))
+	// Todo: finish generating a source package
+}
+
 func (pkg PackageContext) BuildPackage() {
 	outputStatus("Building package " + highlight(pkg.Name) + "...")
 	err := setupDirectories()
@@ -442,5 +464,8 @@ func (pkg PackageContext) BuildPackage() {
 	pkg.CompressPackage()
 	if *checkFiles {
 		pkg.VerifyFiles()
+	}
+	if *generateSourcePackage {
+		pkg.GenerateSourcePackage()
 	}
 }
