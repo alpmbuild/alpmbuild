@@ -378,7 +378,7 @@ func (pkg PackageContext) TakeFilesFromParent() {
 }
 
 func (pkg PackageContext) GenerateSourcePackage() {
-	outputStatus("Generating source package... [TODO: Finish source package generation]")
+	outputStatus("Generating source package...")
 	home, err := os.UserHomeDir()
 	if err != nil {
 		outputError("There was an error obtaining the home directory")
@@ -391,8 +391,23 @@ func (pkg PackageContext) GenerateSourcePackage() {
 			}
 		}
 	}
+	os.Chdir(startPWD)
+	_, err = copyFile(*buildFile, filepath.Join(home, "alpmbuild/sourcepackages", path.Base(*buildFile)))
+	if err != nil {
+		outputError("There was an error copying the specfile into the source package:\n\t" + err.Error())
+	}
 	os.Chdir(filepath.Join(home, "alpmbuild"))
-	// Todo: finish generating a source package
+	err = os.RemoveAll(filepath.Join(home, "alpmbuild", pkg.Name))
+	if err != nil {
+		outputError("Failed to clean up source package directory: " + err.Error())
+	}
+	err = os.Rename(filepath.Join(home, "alpmbuild/sourcepackages"), filepath.Join(home, "alpmbuild", pkg.Name))
+	if err != nil {
+		outputError("Failed to rename source package directory: " + err.Error())
+	}
+	exec.Command("tar", "-Izstd", "-cvf", filepath.Join(home, "alpmbuild", pkg.Name+".alpmsrc.pkg.tar.zst"), pkg.Name).Run()
+
+	outputStatus("Generated source package")
 }
 
 func (pkg PackageContext) BuildPackage() {

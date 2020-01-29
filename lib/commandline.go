@@ -32,6 +32,7 @@ var hideCommandOutput *bool
 var useColours *bool
 var generateSourcePackage *bool
 var buildFile *string
+var startPWD string
 
 type arrayFlag []string
 
@@ -52,6 +53,12 @@ func Enter() {
 	hideCommandOutput = flag.Bool("hideCommandOutput", false, "Hide package command output")
 	useColours = flag.Bool("useColours", true, "Use colours for output.")
 	generateSourcePackage = flag.Bool("generateSourcePackage", true, "Generate a source package")
+
+	var err error
+	startPWD, err = os.Getwd()
+	if err != nil {
+		outputError("There was an error getting the current working directory:\n\t" + err.Error())
+	}
 
 	var macros arrayFlag
 
@@ -77,7 +84,7 @@ func Enter() {
 		os.Exit(1)
 	}
 
-	err := Build(*buildFile)
+	err = Build(*buildFile)
 	if err != nil {
 		println(err.Error())
 	}
