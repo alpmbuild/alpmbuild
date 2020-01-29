@@ -57,8 +57,14 @@ var PossibleKeys = []string{
 	"URL:",
 	"Requires:",
 	"BuildRequires:",
+	"Recommends:",
 	"Version:",
 	"Release:",
+}
+
+var PossibleDirectives = []string{
+	"NoFileCheck",
+	"ReasonFor",
 }
 
 type PackageContext struct {
@@ -70,6 +76,7 @@ type PackageContext struct {
 
 	// Array fields with relatively standard behaviour.
 	Requires      []string `keyArray:"requires:" pkginfo:"depend"`
+	Recommends    []string `keyArray:"recommends:" pkginfo:"optdepend"`
 	BuildRequires []string `keyArray:"buildrequires:" pkginfo:"makedepend"`
 
 	// Nonstandard single-value fields
@@ -92,6 +99,7 @@ type PackageContext struct {
 	IsSubpackage  bool
 	parentPackage *PackageContext
 	Subpackages   map[string]PackageContext
+	Reasons       map[string]string
 }
 
 func (pkg PackageContext) GeneratePackageInfo() {
@@ -138,7 +146,15 @@ func (pkg PackageContext) GeneratePackageInfo() {
 					keyArray := keyInterface.([]string)
 
 					for _, item := range keyArray {
-						packageInfo = fmt.Sprintf("%s\n%s = %s", packageInfo, packageInfoKey, item)
+						if packageInfoKey == "optdepend" {
+							if reason, ok := pkg.Reasons[item]; ok {
+								packageInfo = fmt.Sprintf("%s\n%s = %s: %s", packageInfo, packageInfoKey, item, reason)
+							} else {
+								packageInfo = fmt.Sprintf("%s\n%s = %s", packageInfo, packageInfoKey, item)
+							}
+						} else {
+							packageInfo = fmt.Sprintf("%s\n%s = %s", packageInfo, packageInfoKey, item)
+						}
 					}
 				}
 			}

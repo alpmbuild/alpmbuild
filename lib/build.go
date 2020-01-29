@@ -35,6 +35,7 @@ func ParsePackage(data string) PackageContext {
 	lex := PackageContext{}
 
 	lex.Subpackages = make(map[string]PackageContext)
+	lex.Reasons = make(map[string]string)
 
 	currentStage := NoStage
 	ifStage := NoStage
@@ -91,8 +92,60 @@ mainParseLoop:
 				case "NoFileCheck":
 					*checkFiles = false
 					continue mainParseLoop
+				case "ReasonFor":
+					if len(fields) < 3 {
+						lineWithAdd := line + "          "
+						outputErrorHighlight(
+							"Not enough arguments to "+highlight("ReasonFor")+" on line "+strconv.Itoa(currentLine+1),
+							lineWithAdd,
+							"Add a package you want to give a reason for and the reason like this: "+highlight("PackageName: Reason"),
+							strings.Index(lineWithAdd, "          "),
+							len("          "),
+						)
+					}
+					if len(fields) < 4 {
+						lineWithAdd := line + "          "
+						outputErrorHighlight(
+							"No reason provided for "+highlight(fields[2])+" on line "+strconv.Itoa(currentLine+1),
+							lineWithAdd,
+							"Add a description why you want users to install this package",
+							strings.Index(lineWithAdd, "          "),
+							len("          "),
+						)
+					}
+					if strings.Contains(line, ":") {
+						split := strings.Split(line, ":")
+						if len(split) < 2 {
+							outputError("alpmbuild ran into an error state that should not be possible.\nPlease report this to https://github.com/appadeia/alpmbuild and attach a specfile.")
+						}
+						name := strings.Split(split[0], " ")[len(strings.Split(split[0], " "))-1]
+						lex.Reasons[name] = strings.TrimSpace(split[1])
+						continue mainParseLoop
+					} else {
+						outputErrorHighlight(
+							"ReasonFor missing "+highlight(":")+" on line "+strconv.Itoa(currentLine+1),
+							line,
+							"Add a "+highlight(":")+" after the package name",
+							strings.Index(line, fields[2]), len(fields[2]),
+						)
+					}
+				default:
+					outputWarningHighlight(
+						"Invalid #!alpmbuild directive "+highlight(fields[1])+"on line "+strconv.Itoa(currentLine+1),
+						line,
+						"Did you mean to use "+highlight(ClosestString(fields[1], PossibleDirectives))+"?",
+						strings.Index(line, fields[1]), len(fields[1]),
+					)
+					continue mainParseLoop
 				}
 			}
+
+			outputWarningHighlight(
+				"#!alpmbuild directive missing type",
+				line,
+				"",
+				0, 0,
+			)
 		}
 
 		// Let's parse the key-value lines
