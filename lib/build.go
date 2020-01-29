@@ -3,6 +3,7 @@ package lib
 import (
 	"io/ioutil"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -99,6 +100,8 @@ func ParsePackage(data string) PackageContext {
 
 			num := fields.NumField()
 
+			hasSet := false
+
 			// Loop through the fields of the package context in order to see if any of the annotated key values match the line we're on
 			for i := 0; i < num; i++ {
 				field := fields.Field(i)
@@ -109,6 +112,7 @@ func ParsePackage(data string) PackageContext {
 					key := reflect.ValueOf(&currentPackage).Elem().FieldByName(field.Name)
 					if key.IsValid() {
 						key.SetString(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex))
+						hasSet = true
 					}
 				}
 				// These are the multi-value keys, such as Requires and BuildRequires
@@ -120,6 +124,7 @@ func ParsePackage(data string) PackageContext {
 						itemArray := strings.Split(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex), " ")
 
 						key.Set(reflect.AppendSlice(key, reflect.ValueOf(itemArray)))
+						hasSet = true
 					}
 				}
 			}
@@ -128,6 +133,15 @@ func ParsePackage(data string) PackageContext {
 				lex.Subpackages[currentSubpackage] = currentPackage
 			} else {
 				lex = currentPackage
+			}
+
+			if !hasSet {
+				outputErrorHighlight(
+					highlight(words[0])+" is not a valid key on line "+strconv.Itoa(currentLine+1),
+					line,
+					"Did you mean to use "+highlight(ClosestString(words[0], PossibleKeys))+"?",
+					strings.Index(line, words[0]), len(words[0]),
+				)
 			}
 		}
 

@@ -50,6 +50,17 @@ const (
 	IfFalseStage
 )
 
+var PossibleKeys = []string{
+	"Name:",
+	"Summary:",
+	"License:",
+	"URL:",
+	"Requires:",
+	"BuildRequires:",
+	"Version:",
+	"Release:",
+}
+
 type PackageContext struct {
 	// Single-value fields with relatively standard behaviour.
 	Name    string `macro:"name" key:"name:" pkginfo:"pkgname"`
