@@ -405,8 +405,14 @@ func (pkg PackageContext) GenerateSourcePackage() {
 	if err != nil {
 		outputError("Failed to rename source package directory: " + err.Error())
 	}
-	exec.Command("tar", "-Izstd", "-cvf", filepath.Join(home, "alpmbuild", pkg.Name+".alpmsrc.pkg.tar.zst"), pkg.Name).Run()
-
+	err = exec.Command("tar", "-Izstd", "-cvf", filepath.Join(home, "alpmbuild", "packages", pkg.Name+".alpmsrc.pkg.tar.zst"), pkg.Name).Run()
+	if err != nil {
+		outputError("Failed to compress source package: " + err.Error())
+	}
+	err = os.RemoveAll(filepath.Join(home, "alpmbuild", pkg.Name))
+	if err != nil {
+		outputError("Failed to clean up source package directory: " + err.Error())
+	}
 	outputStatus("Generated source package")
 }
 
