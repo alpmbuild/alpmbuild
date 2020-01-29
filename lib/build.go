@@ -60,14 +60,14 @@ mainParseLoop:
 
 				if len(macros) > 0 {
 					outputWarningHighlight(
-						"Macro not expanded: "+highlight(matchString),
+						"Macro not expanded on line "+strconv.Itoa(currentLine+1)+": "+highlight(matchString),
 						line,
 						"Did you mean to use "+highlight("%{"+ClosestString(matchString, macros)+"}")+"?",
 						strings.Index(line, matchString), len(matchString),
 					)
 				} else {
 					outputWarningHighlight(
-						"Macro not expanded: "+highlight(matchString),
+						"Macro not expanded on line "+strconv.Itoa(currentLine+1)+": "+highlight(matchString),
 						line,
 						"",
 						strings.Index(line, matchString), len(matchString),
