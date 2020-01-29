@@ -2,7 +2,6 @@ Name:    hello
 Version: 2.10
 Release: 0
 Summary: Hello World
-Relese: ayy
 
 License: GPL
 URL:     https://gnu.org

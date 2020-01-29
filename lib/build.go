@@ -38,6 +38,7 @@ func ParsePackage(data string) PackageContext {
 	currentSubpackage := ""
 	currentFilesSubpackage := ""
 
+mainParseLoop:
 	for currentLine, line := range strings.Split(strings.TrimSuffix(data, "\n"), "\n") {
 		// Blank lines are useless to us.
 		if line == "" {
@@ -58,6 +59,7 @@ func ParsePackage(data string) PackageContext {
 				switch fields[1] {
 				case "NoFileCheck":
 					*checkFiles = false
+					continue mainParseLoop
 				}
 			}
 		}
@@ -70,17 +72,19 @@ func ParsePackage(data string) PackageContext {
 			// Because we need at least two values for a Key: Value PAIR, make
 			// sure we have at least two values
 			if len(words) < 2 {
-				continue
+				continue mainParseLoop
 			}
 
 			// Let's worry about our sources first...
 			if strings.HasPrefix(strings.ToLower(words[0]), "source") {
 				lex.Sources = append(lex.Sources, evalInlineMacros(words[1], lex))
+				continue mainParseLoop
 			}
 
 			// And then our patches...
 			if strings.HasPrefix(strings.ToLower(words[0]), "patch") {
 				lex.Patches = append(lex.Patches, evalInlineMacros(words[1], lex))
+				continue mainParseLoop
 			}
 
 			// Now we produce macros based off our package context.
@@ -143,6 +147,7 @@ func ParsePackage(data string) PackageContext {
 					strings.Index(line, words[0]), len(words[0]),
 				)
 			}
+			continue mainParseLoop
 		}
 
 		// How about some conditional stuff?
@@ -156,21 +161,21 @@ func ParsePackage(data string) PackageContext {
 			switch fields[0] {
 			case "%endif":
 				ifStage = NoStage
-				continue
+				continue mainParseLoop
 			case "%if":
 				if evalIf(line, lex, currentLine+1) {
 					ifStage = IfTrueStage
 				} else {
 					ifStage = IfFalseStage
 				}
-				continue
+				continue mainParseLoop
 			case "%else":
 				if ifStage == IfTrueStage {
 					ifStage = IfFalseStage
 				} else {
 					ifStage = IfTrueStage
 				}
-				continue
+				continue mainParseLoop
 			case "%elseif":
 				if ifStage == IfTrueStage {
 					ifStage = IfFalseStage
@@ -181,8 +186,14 @@ func ParsePackage(data string) PackageContext {
 						ifStage = IfFalseStage
 					}
 				}
-				continue
+				continue mainParseLoop
 			}
+		}
+
+		// If we're here because it's an if false stage,
+		// let's skip to the next iteration
+		if ifStage == IfFalseStage {
+			continue mainParseLoop
 		}
 
 		// We need to be able to handle subpackages
@@ -203,6 +214,7 @@ func ParsePackage(data string) PackageContext {
 					parentPackage: &lex,
 				}
 			}
+			continue mainParseLoop
 		}
 
 		// Time for the sections!
@@ -217,15 +229,15 @@ func ParsePackage(data string) PackageContext {
 			// Now we check to see if we're switching to a new stage
 			if strings.HasPrefix(line, "%prep") {
 				currentStage = PrepareStage
-				continue
+				continue mainParseLoop
 			}
 			if strings.HasPrefix(line, "%build") {
 				currentStage = BuildStage
-				continue
+				continue mainParseLoop
 			}
 			if strings.HasPrefix(line, "%install") {
 				currentStage = InstallStage
-				continue
+				continue mainParseLoop
 			}
 			if strings.HasPrefix(line, "%files") {
 				if subpackageName, hasSubpackage := grabFlagFromString(line, "-n", []string{}); hasSubpackage {
@@ -238,17 +250,20 @@ func ParsePackage(data string) PackageContext {
 					}
 				}
 				currentStage = FileStage
-				continue
+				continue mainParseLoop
 			}
 
 			// If we're in a stage, we want to append some commands to our list
 			switch currentStage {
 			case PrepareStage:
 				lex.Commands.Prepare = append(lex.Commands.Prepare, evalInlineMacros(line, lex))
+				continue mainParseLoop
 			case BuildStage:
 				lex.Commands.Build = append(lex.Commands.Build, evalInlineMacros(line, lex))
+				continue mainParseLoop
 			case InstallStage:
 				lex.Commands.Install = append(lex.Commands.Install, evalInlineMacros(line, lex))
+				continue mainParseLoop
 			case FileStage:
 				if currentFilesSubpackage == "" {
 					lex.Files = append(lex.Files, evalInlineMacros(line, lex))
@@ -261,8 +276,17 @@ func ParsePackage(data string) PackageContext {
 						outputError("You cannot specify files for a subpackage if the subpackage has not been declared")
 					}
 				}
+				continue mainParseLoop
 			}
 		}
+
+		// Comment time!
+		if strings.HasPrefix(line, "#") {
+			continue mainParseLoop
+		}
+
+		// If we got to here without continuing, something's wrong.
+		outputError("Could not parse line " + strconv.Itoa(currentLine+1) + ":\n          " + line)
 	}
 
 	lex.BuildPackage()
