@@ -259,7 +259,7 @@ func (pkg PackageContext) CompressPackage() {
 		os.Chdir(filepath.Join(home, "alpmbuild/subpackages", pkg.Name))
 	}
 
-	cmd := exec.Command("sh", "-c", "tar -czvf"+packagesDir+"/"+pkg.Name+".pkg.tar.gz * .PKGINFO .MTREE")
+	cmd := exec.Command("sh", "-c", "tar -Izstd -cvf"+packagesDir+"/"+pkg.Name+".pkg.tar.zst * .PKGINFO .MTREE")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		outputError(fmt.Sprintf("Creating tarball failed:\n%s", string(output)))
