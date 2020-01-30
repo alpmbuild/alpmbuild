@@ -10,7 +10,7 @@ URL:     https://gnu.org
 Source0: https://ftp.gnu.org/gnu/hello/%{name}-%{version}.tar.gz
 #!alpmbuild ReasonFor cyanogen: This is a really cool package
 Recommends: cyanogen
-%if %{version} == 2
+%if 0
 Requires: invalid
 %elif 1 == 3
 Requires: still-invalid
