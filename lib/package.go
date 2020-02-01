@@ -305,20 +305,6 @@ func (pkg PackageContext) CompressPackage() {
 	}
 }
 
-func mapEnv(in string) string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		outputError("Could not get user's home directory.")
-	}
-
-	switch in {
-	case "PREFIX":
-		return filepath.Join(home, "alpmbuild/package")
-	}
-
-	return ""
-}
-
 func (pkg PackageContext) VerifyFiles() {
 	outputStatus("Checking files of " + highlight(pkg.GetNevra()) + "...")
 	home, err := os.UserHomeDir()
@@ -490,10 +476,16 @@ func (pkg PackageContext) BuildPackage() {
 
 	os.Chdir(filepath.Join(home, "alpmbuild/buildroot"))
 
+	env := os.Environ()
+	env = append(env, fmt.Sprintf("PREFIX=%s", filepath.Join(home, "alpmbuild/package")))
+
 	safeRun := func(command string) {
-		args := strings.Fields(os.Expand(command, mapEnv))
+		args := strings.Fields(command)
 
 		if args[0] == "cd" {
+			if len(args) < 2 {
+				return
+			}
 			wd, err := os.Getwd()
 			if err != nil {
 				outputError(fmt.Sprintf("Failed to get working directory:\n\t%s", err.Error()))
@@ -502,7 +494,14 @@ func (pkg PackageContext) BuildPackage() {
 			return
 		}
 
-		cmd := exec.Command("fakeroot", args...)
+		if args[0] == "export" {
+			for _, field := range args[1:] {
+				env = append(env, field)
+			}
+		}
+
+		cmd := exec.Command("fakeroot", append([]string{"sh", "-c"}, command)...)
+		cmd.Env = env
 		if !*hideCommandOutput {
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
