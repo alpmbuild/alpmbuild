@@ -33,6 +33,7 @@ var useColours *bool
 var generateSourcePackage *bool
 var buildFile *string
 var startPWD string
+var compressionType *string
 
 type arrayFlag []string
 
@@ -53,6 +54,11 @@ func Enter() {
 	hideCommandOutput = flag.Bool("hideCommandOutput", false, "Hide package command output")
 	useColours = flag.Bool("useColours", true, "Use colours for output.")
 	generateSourcePackage = flag.Bool("generateSourcePackage", true, "Generate a source package")
+	compressionType = flag.String("compression", "zstd", "The compression type to use. Default is zstd. Choose from: gz, xz, bz2, or zstd.")
+
+	if _, ok := CompressionTypes[*compressionType]; !ok {
+		outputError(*compressionType + " is not a valid compression method.")
+	}
 
 	var err error
 	startPWD, err = os.Getwd()

@@ -68,6 +68,30 @@ var PossibleDirectives = []string{
 	"ReasonFor",
 }
 
+type CompressionType struct {
+	Suffix string
+	Flag   string
+}
+
+var CompressionTypes = map[string]CompressionType{
+	"gz": CompressionType{
+		Suffix: "gz",
+		Flag:   "-z",
+	},
+	"xz": CompressionType{
+		Suffix: "xz",
+		Flag:   "-J",
+	},
+	"zstd": CompressionType{
+		Suffix: "zst",
+		Flag:   "--zstd",
+	},
+	"bz2": CompressionType{
+		Suffix: "bz2",
+		Flag:   "-j",
+	},
+}
+
 type PackageContext struct {
 	// Single-value fields with relatively standard behaviour.
 	Name    string `macro:"name" key:"name:" pkginfo:"pkgname"`
@@ -298,7 +322,7 @@ func (pkg PackageContext) CompressPackage() {
 		os.Chdir(filepath.Join(home, "alpmbuild/subpackages", pkg.GetNevra()))
 	}
 
-	cmd := exec.Command("sh", "-c", "tar -Izstd -cvf"+packagesDir+"/"+pkg.GetNevra()+".pkg.tar.zst * .PKGINFO .MTREE")
+	cmd := exec.Command("fakeroot", "sh", "-c", "bsdtar "+CompressionTypes[*compressionType].Flag+" -cvf"+packagesDir+"/"+pkg.GetNevra()+".pkg.tar."+CompressionTypes[*compressionType].Suffix+" .PKGINFO .MTREE *")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		outputError(fmt.Sprintf("Creating tarball failed:\n%s", string(output)))
@@ -430,7 +454,7 @@ func (pkg PackageContext) GenerateSourcePackage() {
 	if err != nil {
 		outputError("Failed to rename source package directory: " + err.Error())
 	}
-	err = exec.Command("tar", "-Izstd", "-cvf", filepath.Join(home, "alpmbuild", "packages", pkg.GetNevr()+".alpmsrc.pkg.tar.zst"), pkg.GetNevr()).Run()
+	err = exec.Command("bsdtar", CompressionTypes[*compressionType].Flag, "-cvf", filepath.Join(home, "alpmbuild", "packages", pkg.GetNevr()+".alpmsrc.pkg.tar."+CompressionTypes[*compressionType].Suffix), pkg.GetNevr()).Run()
 	if err != nil {
 		outputError("Failed to compress source package: " + err.Error())
 	}
