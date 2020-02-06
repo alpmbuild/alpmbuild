@@ -10,6 +10,9 @@ package librpm
 // static int definemacro(char* macro, int level) {
 //	return rpmDefineMacro(NULL, macro, level);
 // }
+// static int loadfromfile(char* path) {
+//	return rpmLoadMacroFile(NULL, path);
+// }
 // static void dumpmacros() {
 //	FILE* file = fopen("/tmp/alpmbuild", "w+");
 //	rpmDumpMacroTable(NULL, file);
@@ -44,6 +47,15 @@ func DefineMacro(macro string, level int) int {
 	defer C.free(unsafe.Pointer(cs))
 
 	result := C.definemacro(cs, C.int(level))
+
+	return int(result)
+}
+
+func LoadFromFile(path string) int {
+	cs := C.CString(path)
+	defer C.free(unsafe.Pointer(cs))
+
+	result := C.loadfromfile(cs)
 
 	return int(result)
 }
