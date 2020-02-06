@@ -22,8 +22,6 @@ BuildRequires: make
 BuildRequires: gettext
 
 %prep
-cd
-export
 tar -xvf %{name}-%{version}.tar.gz
 cd %{name}-%{version}
 

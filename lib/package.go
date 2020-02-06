@@ -322,7 +322,7 @@ func (pkg PackageContext) CompressPackage() {
 		os.Chdir(filepath.Join(home, "alpmbuild/subpackages", pkg.GetNevra()))
 	}
 
-	cmd := exec.Command("fakeroot", "sh", "-c", "bsdtar "+CompressionTypes[*compressionType].Flag+" -cvf"+packagesDir+"/"+pkg.GetNevra()+".pkg.tar."+CompressionTypes[*compressionType].Suffix+" .PKGINFO .MTREE *")
+	cmd := exec.Command("sh", "-c", "bsdtar "+CompressionTypes[*compressionType].Flag+" -cvf"+packagesDir+"/"+pkg.GetNevra()+".pkg.tar."+CompressionTypes[*compressionType].Suffix+" .PKGINFO .MTREE *")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		outputError(fmt.Sprintf("Creating tarball failed:\n%s", string(output)))
@@ -503,53 +503,31 @@ func (pkg PackageContext) BuildPackage() {
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("PREFIX=%s", filepath.Join(home, "alpmbuild/package")))
 
-	safeRun := func(command string) {
-		args := strings.Fields(command)
-
-		if args[0] == "cd" {
-			if len(args) < 2 {
-				return
-			}
-			wd, err := os.Getwd()
-			if err != nil {
-				outputError(fmt.Sprintf("Failed to get working directory:\n\t%s", err.Error()))
-			}
-			os.Chdir(path.Join(wd, args[1]))
-			return
-		}
-
-		if args[0] == "export" {
-			for _, field := range args[1:] {
-				env = append(env, field)
-			}
-		}
-
-		cmd := exec.Command("fakeroot", append([]string{"sh", "-c"}, command)...)
-		cmd.Env = env
-		if !*hideCommandOutput {
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-		}
-
-		err := cmd.Run()
-		if err != nil {
-			outputError(fmt.Sprintf("Command failed:\n\t%s", strings.Join(args, " ")))
-		}
-	}
-
 	// Prepare commands.
-	outputStatus("Running prepare commands...")
-	for _, command := range pkg.Commands.Prepare {
-		safeRun(command)
+	var commands []string
+	commands = append(commands, pkg.Commands.Prepare...)
+	commands = append(commands, pkg.Commands.Build...)
+	commands = append(commands, pkg.Commands.Install...)
+
+	path, err := writeTempfile(strings.Join(commands, "\n"))
+	if err != nil {
+		outputError("There was an error preparing a temporary file.")
 	}
-	outputStatus("Running build commands...")
-	for _, command := range pkg.Commands.Build {
-		safeRun(command)
+
+	cmd := exec.Command("sh", path)
+	cmd.Env = env
+
+	if !*hideCommandOutput {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 	}
-	outputStatus("Running install commands...")
-	for _, command := range pkg.Commands.Install {
-		safeRun(command)
+
+	err = cmd.Run()
+	if err != nil {
+		outputError("Exit status was non-zero in build script, aborting...")
 	}
+
+	outputStatus("Running package commands...")
 
 	for _, subpackage := range pkg.Subpackages {
 		subpackage.InheritFromParent()

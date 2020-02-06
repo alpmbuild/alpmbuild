@@ -3,6 +3,7 @@ package lib
 import (
 	"flag"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/appadeia/alpmbuild/lib/librpm"
@@ -55,6 +56,24 @@ func Enter() {
 	useColours = flag.Bool("useColours", true, "Use colours for output.")
 	generateSourcePackage = flag.Bool("generateSourcePackage", true, "Generate a source package")
 	compressionType = flag.String("compression", "zstd", "The compression type to use. Default is zstd. Choose from: gz, xz, bz2, or zstd.")
+	fakeroot := flag.Bool("fakeroot", false, "Internal flag. Do not set.")
+
+	flag.Parse()
+
+	var macros arrayFlag
+
+	// Flags that mimic behaviour of rpmbuild
+	ba := flag.String("ba", "", "Copies rpmbuild -ba's behaviour")
+	flag.Var(&macros, "D", "Define a macro with MACRO EXPR")
+	flag.Var(&macros, "define", "Define a macro with MACRO EXPR")
+
+	if !*fakeroot {
+		cmd := exec.Command("fakeroot", append(os.Args, "-fakeroot")...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+		return
+	}
 
 	if _, ok := CompressionTypes[*compressionType]; !ok {
 		outputError(*compressionType + " is not a valid compression method.")
@@ -65,16 +84,6 @@ func Enter() {
 	if err != nil {
 		outputError("There was an error getting the current working directory:\n\t" + err.Error())
 	}
-
-	var macros arrayFlag
-
-	flag.Var(&macros, "D", "Define a macro with MACRO EXPR")
-	flag.Var(&macros, "define", "Define a macro with MACRO EXPR")
-
-	// Flags that mimic behaviour of rpmbuild
-	ba := flag.String("ba", "", "Copies rpmbuild -ba's behaviour")
-
-	flag.Parse()
 
 	if *ba != "" {
 		*buildFile = *ba

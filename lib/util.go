@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -137,4 +139,10 @@ func grabFlagFromString(parent, grabFlag string, dontGrabFlags []string) (string
 func prettyPrint(i interface{}) string {
 	s, _ := json.MarshalIndent(i, "", "\t")
 	return string(s)
+}
+
+func writeTempfile(contents string) (string, error) {
+	filename := fmt.Sprintf("/tmp/%d.alpmbuild.sh", rand.Int63())
+	err := ioutil.WriteFile(filename, []byte(contents), os.ModePerm)
+	return filename, err
 }
