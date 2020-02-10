@@ -76,6 +76,9 @@ func outputErrorHighlight(message, lineToHighlight, additionalMessage string, st
 }
 
 func outputWarningHighlight(message, lineToHighlight, additionalMessage string, startIndex, length int) {
+	if len(lineToHighlight) < startIndex+length+1 {
+		return
+	}
 	lineToHighlight = strings.Replace(lineToHighlight, lineToHighlight[startIndex:startIndex+length], highlight(lineToHighlight[startIndex:startIndex+length]), 1)
 	println(yellow("WARNING ==> ") + bold(message))
 	fmt.Printf(

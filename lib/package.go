@@ -322,6 +322,9 @@ func (pkg PackageContext) CompressPackage() {
 		os.Chdir(filepath.Join(home, "alpmbuild/subpackages", pkg.GetNevra()))
 	}
 
+	clean := exec.Command("find", ".", "-type", "d", "-empty", "-delete")
+	clean.Run()
+
 	cmd := exec.Command("sh", "-c", "bsdtar "+CompressionTypes[*compressionType].Flag+" -cvf"+packagesDir+"/"+pkg.GetNevra()+".pkg.tar."+CompressionTypes[*compressionType].Suffix+" .PKGINFO .MTREE *")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -501,7 +504,7 @@ func (pkg PackageContext) BuildPackage() {
 	os.Chdir(filepath.Join(home, "alpmbuild/buildroot"))
 
 	env := os.Environ()
-	env = append(env, fmt.Sprintf("PREFIX=%s", filepath.Join(home, "alpmbuild/package")))
+	env = append(env, fmt.Sprintf("BUILDROOT=%s", filepath.Join(home, "alpmbuild/package")))
 
 	// Prepare commands.
 	var commands []string

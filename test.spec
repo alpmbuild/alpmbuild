@@ -26,11 +26,11 @@ tar -xvf %{name}-%{version}.tar.gz
 cd %{name}-%{version}
 
 %build
-./configure --prefix=%{_prefix}
-make
+%configure
+%make_build
 
 %install
-make DESTDIR=$PREFIX install
+%make_install
 
 %files
 %{_bindir}/hello

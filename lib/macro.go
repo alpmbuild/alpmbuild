@@ -1,6 +1,12 @@
 package lib
 
-import "github.com/appadeia/alpmbuild/lib/librpm"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/appadeia/alpmbuild/lib/librpm"
+)
 
 /*
    alpmbuild — a tool to build arch packages from RPM specfiles
@@ -32,7 +38,12 @@ func evalInlineMacros(input string, context PackageContext) string {
 		for macro, expandTo := range macros {
 			librpm.DefineMacro(macro+" "+expandTo, 256)
 		}
+		home, err := os.UserHomeDir()
+		if err != nil {
+			outputError("Could not get user's home directory.")
+		}
 		librpm.LoadFromFile("/usr/lib/rpm/macros")
+		librpm.DefineMacro(fmt.Sprintf("buildroot %s", filepath.Join(home, "alpmbuild/package")), 0)
 	}
 	if context.Name != "" {
 		librpm.DefineMacro("name "+context.Name, 0)
