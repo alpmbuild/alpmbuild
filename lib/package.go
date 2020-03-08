@@ -279,7 +279,7 @@ func (pkg PackageContext) setupSources() error {
 	handleSource := func(url string) error {
 		if isValidUrl(url) {
 			outputStatus("Downloading " + highlight(url) + "...")
-			err := downloadFile(filepath.Join(home, "alpmbuild/buildroot", path.Base(url)), url)
+			err := downloadFile(filepath.Join(home, "alpmbuild/sources", path.Base(url)), url)
 			if err != nil {
 				return err
 			}

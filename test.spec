@@ -22,8 +22,7 @@ BuildRequires: make
 BuildRequires: gettext
 
 %prep
-tar -xvf %{name}-%{version}.tar.gz
-cd %{name}-%{version}
+%setup -q
 
 %build
 %configure

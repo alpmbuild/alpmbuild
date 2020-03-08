@@ -1,9 +1,12 @@
 package lib
 
 import (
+	"flag"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/appadeia/alpmbuild/lib/librpm"
 )
@@ -33,7 +36,22 @@ var macros = map[string]string{
 
 var expanded = false
 
+func getExtractCommandForName(name string, quiet bool) string {
+	if strings.HasSuffix(name, ".zip") {
+		if quiet {
+			return "%{__unzip} -qq %{_sourcedir}/" + path.Base(name)
+		}
+		return "%{__unzip} %{_sourcedir}/" + path.Base(name)
+	}
+	if quiet {
+		return "%{__tar} -xf %{_sourcedir}/" + path.Base(name)
+	}
+	return "%{__tar} -xvvf %{_sourcedir}/" + path.Base(name)
+}
+
 func evalInlineMacros(input string, context PackageContext) string {
+	mutate := input
+
 	if !expanded {
 		for macro, expandTo := range macros {
 			librpm.DefineMacro(macro+" "+expandTo, 256)
@@ -44,6 +62,7 @@ func evalInlineMacros(input string, context PackageContext) string {
 		}
 		librpm.LoadFromFile("/usr/lib/rpm/macros")
 		librpm.DefineMacro(fmt.Sprintf("buildroot %s", filepath.Join(home, "alpmbuild/package")), 0)
+		librpm.DefineMacro(fmt.Sprintf("_sourcedir %s", filepath.Join(home, "alpmbuild/sources")), 0)
 	}
 	if context.Name != "" {
 		librpm.DefineMacro("name "+context.Name, 0)
@@ -51,6 +70,43 @@ func evalInlineMacros(input string, context PackageContext) string {
 	if context.Version != "" {
 		librpm.DefineMacro("version "+context.Version, 0)
 	}
-	mutate := input
+	if context.Name != "" && context.Version != "" {
+		librpm.DefineMacro(fmt.Sprintf("buildsubdir %s-%s", context.Name, context.Version), 0)
+	}
+	if strings.Contains(input, "%setup") {
+		set := flag.NewFlagSet("setup", flag.ContinueOnError)
+
+		createDir := set.Bool("c", false, "")
+		doNotDeleteDirectory := set.Bool("D", false, "")
+		unpackQuietly := set.Bool("q", false, "")
+		skipDefaultSource := set.Bool("T", false, "")
+
+		set.Parse(strings.Split(input, " ")[1:])
+
+		script := ""
+
+		if !*doNotDeleteDirectory {
+			script += "rm -rf %{buildsubdir}\n"
+		}
+		if *createDir {
+			script += `mkdir -p %{buildsubdir}
+cd %{buildsubdir}` + "\n"
+		} else if !*skipDefaultSource {
+			script += fmt.Sprintf("%s\n", getExtractCommandForName(context.Sources[0], *unpackQuietly))
+		}
+
+		if !*createDir {
+			script += "cd %{buildsubdir}\n"
+		} else if !*skipDefaultSource {
+			script += fmt.Sprintf("%s\n", getExtractCommandForName(context.Sources[0], *unpackQuietly))
+		}
+
+		for _, source := range context.Sources[1:] {
+			script += fmt.Sprintf("%s\n", getExtractCommandForName(source, *unpackQuietly))
+		}
+
+		mutate = script
+	}
+
 	return librpm.ExpandMacro(mutate)
 }
