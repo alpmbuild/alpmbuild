@@ -21,9 +21,6 @@ BuildRequires: gcc
 BuildRequires: make
 BuildRequires: gettext
 
-%prep
-%setup -q
-
 %install
 mkdir -p %{?buildroot}/%{_bindir}
 mkdir -p %{?buildroot}/%{_datadir}/info

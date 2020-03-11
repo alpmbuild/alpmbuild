@@ -412,6 +412,13 @@ mainParseLoop:
 
 	promptMissingDepsInstall(lex)
 
+	if len(lex.Commands.Prepare) == 0 {
+		if !*fakeroot {
+			outputStatus("Automatically setting up package...")
+		}
+		lex.Commands.Prepare = append(lex.Commands.Prepare, evalInlineMacros("%setup -q", lex))
+	}
+
 	lex.BuildPackage()
 
 	return lex
