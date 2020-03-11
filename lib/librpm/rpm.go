@@ -18,12 +18,15 @@ package librpm
 //	rpmDumpMacroTable(NULL, file);
 //	fclose(file);
 // }
+// static void delmacro(char* macro) {
+//	delMacro(NULL, macro);
+// }
 //
 import "C"
 import (
-	"unsafe"
 	"io/ioutil"
 	"strings"
+	"unsafe"
 )
 
 type Macro struct {
@@ -40,6 +43,13 @@ func ExpandMacro(macro string) string {
 
 	goStr := C.GoString(expanded)
 	return goStr
+}
+
+func DeleteMacro(macro string) {
+	cs := C.CString(macro)
+	defer C.free(unsafe.Pointer(cs))
+
+	C.delmacro(cs)
 }
 
 func DefineMacro(macro string, level int) int {
@@ -104,6 +114,6 @@ func DumpMacroNamesAsString() []string {
 			macros = append(macros, fields[1])
 		}
 	}
-	
+
 	return macros
 }
