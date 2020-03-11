@@ -2,8 +2,12 @@ package lib
 
 import (
 	"bufio"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -71,5 +75,87 @@ func promptMissingDepsInstall(pkg PackageContext) {
 		os.Exit(0)
 	} else if strings.Contains(text, "a") {
 		abort()
+	}
+}
+
+//* Built package linting
+
+func (pkg PackageContext) trimPath(in string) string {
+	return strings.TrimPrefix(in, pkg.PackageRoot())
+}
+
+func (pkg PackageContext) lintAll() {
+	outputStatus("Linting package " + highlight(pkg.GetNevra()) + "...")
+	pkg.lintForReferencesToBuildDirectory()
+	pkg.lintForDotfilesInPackageRoot()
+	pkg.lintForNewlinesInFilenames()
+}
+
+func (pkg PackageContext) lintForReferencesToBuildDirectory() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		outputError("Could not get user's home directory.")
+	}
+	err = filepath.Walk(
+		pkg.PackageRoot(),
+		func(path string, info os.FileInfo, err error) error {
+			if info.IsDir() {
+				return nil
+			}
+			content, err := ioutil.ReadFile(path)
+			if err != nil {
+				outputError("Failed to open file " + highlight(pkg.trimPath(path)) + " in package " + highlight(pkg.GetNevra()) + ": " + err.Error())
+			}
+			strContent := string(content)
+			if strings.Contains(strContent, filepath.Join(home, "alpmbuild")) {
+				outputWarning(
+					fmt.Sprintf(
+						"Package %s contains a reference to the build directory in file %s",
+						highlight(pkg.GetNevra()),
+						highlight(pkg.trimPath(path)),
+					),
+				)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		outputError(err.Error())
+	}
+}
+
+func (pkg PackageContext) lintForDotfilesInPackageRoot() {
+	files, _ := ioutil.ReadDir(pkg.PackageRoot())
+	for _, file := range files {
+		if strings.HasPrefix(file.Name(), ".") {
+			outputWarning(
+				fmt.Sprintf(
+					"Package %s contains a dotfile %s in the package root",
+					highlight(pkg.GetNevra()),
+					highlight(pkg.trimPath(path.Join(pkg.PackageRoot(), file.Name()))),
+				),
+			)
+		}
+	}
+}
+
+func (pkg PackageContext) lintForNewlinesInFilenames() {
+	err := filepath.Walk(
+		pkg.PackageRoot(),
+		func(path string, info os.FileInfo, err error) error {
+			if strings.Contains(info.Name(), "\n") {
+				outputError(
+					fmt.Sprintf(
+						"Package %s has paths with a newline: %s",
+						highlight(pkg.GetNevra()),
+						highlight(pkg.trimPath(path)),
+					),
+				)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		outputError(err.Error())
 	}
 }

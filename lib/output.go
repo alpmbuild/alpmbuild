@@ -49,6 +49,10 @@ func outputStatus(message string) {
 	println(green("==> ") + bold(message))
 }
 
+func outputWarning(message string) {
+	println(yellow("WARNING ==> ") + bold(message))
+}
+
 func outputError(message string) {
 	println(red("ERROR ==> ") + bold(message))
 	os.Exit(1)

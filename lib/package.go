@@ -305,7 +305,9 @@ func setupDirectories() error {
 
 	for _, dir := range []string{"alpmbuild/buildroot", "alpmbuild/package", "alpmbuild/sources", "alpmbuild/packages", "alpmbuild/subpackages", "alpmbuild/sourcepackages"} {
 		err = os.MkdirAll(filepath.Join(home, dir), os.ModePerm)
-		if dir == "alpmbuild/sourcepackages" {
+		if dir == "alpmbuild/sourcepackages" ||
+			dir == "alpmbuild/package" ||
+			dir == "alpmbuild/subpackages" {
 			os.RemoveAll(filepath.Join(home, dir))
 			err = os.MkdirAll(filepath.Join(home, dir), os.ModePerm)
 		}
@@ -446,6 +448,18 @@ func (pkg PackageContext) setupSources() error {
 	return nil
 }
 
+func (pkg PackageContext) PackageRoot() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		outputError("Could not get user's home directory.")
+	}
+
+	if !pkg.IsSubpackage {
+		return filepath.Join(home, "alpmbuild/package")
+	}
+	return filepath.Join(home, "alpmbuild/subpackages", pkg.GetNevra())
+}
+
 func (pkg PackageContext) CompressPackage() {
 	outputStatus("Compressing " + highlight(pkg.GetNevra()) + " into a package...")
 	home, err := os.UserHomeDir()
@@ -453,11 +467,7 @@ func (pkg PackageContext) CompressPackage() {
 		outputError("Could not get user's home directory.")
 	}
 	packagesDir := filepath.Join(home, "alpmbuild/packages")
-	if !pkg.IsSubpackage {
-		os.Chdir(filepath.Join(home, "alpmbuild/package"))
-	} else {
-		os.Chdir(filepath.Join(home, "alpmbuild/subpackages", pkg.GetNevra()))
-	}
+	os.Chdir(pkg.PackageRoot())
 
 	clean := exec.Command("find", ".", "-type", "d", "-empty", "-delete")
 	clean.Run()
@@ -716,12 +726,14 @@ func (pkg PackageContext) BuildPackage() {
 	for _, subpackage := range pkg.Subpackages {
 		subpackage.InheritFromParent()
 		subpackage.TakeFilesFromParent()
+		subpackage.lintAll()
 		subpackage.GeneratePackageInfo()
 		subpackage.GenerateMTree()
 		subpackage.CompressPackage()
 		subpackage.VerifyFiles()
 	}
 
+	pkg.lintAll()
 	pkg.GeneratePackageInfo()
 	pkg.GenerateMTree()
 	pkg.ClearTimestamps()

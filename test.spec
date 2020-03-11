@@ -23,12 +23,15 @@ BuildRequires: gettext
 mkdir -p %{?buildroot}/%{_bindir}
 mkdir -p %{?buildroot}/%{_datadir}/info
 mkdir -p %{?buildroot}/%{_datadir}/man/man1
-mkdir -p %{?buildroot}/%{_datadir}/locale/en_US
+mkdir -p %{?buildroot}/%{_datadir}/locale/en_US/LC_MESSAGES/
+touch %{?buildroot}/.dotfile
 touch %{?buildroot}/%{_bindir}/hello
 touch %{?buildroot}/%{_datadir}/info/dir
 touch %{?buildroot}/%{_datadir}/info/hello.info
-touch %{?buildroot}/%{_datadir}/man/man1/hello.1
+echo %{?buildroot} > %{?buildroot}/%{_datadir}/man/man1/hello.1
 touch %{?buildroot}/%{_datadir}/locale/en_US/LC_MESSAGES/hello.mo
+touch "%{?buildroot}/bad
+filename"
 chown -R root:root %{?buildroot}
 
 %files
