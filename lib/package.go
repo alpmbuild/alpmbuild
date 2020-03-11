@@ -416,6 +416,20 @@ func (pkg PackageContext) VerifyFiles() {
 	}
 }
 
+func (pkg PackageContext) ClearTimestamps() {
+	outputStatus("Cleaning up timestamps...")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		outputError("Could not get user's home directory.")
+	}
+	path := filepath.Join(home, "alpmbuild/package")
+	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		cmd := exec.Command("touch", "-d", "@1", path)
+		cmd.Run()
+		return nil
+	})
+}
+
 func (pkg PackageContext) TakeFilesFromParent() {
 	outputStatus("Moving files from " + highlight(pkg.parentPackage.Name) + " to " + highlight(pkg.GetNevra()) + "...")
 	home, err := os.UserHomeDir()
@@ -574,6 +588,8 @@ func (pkg PackageContext) BuildPackage() {
 
 	outputStatus("Running package commands...")
 
+	pkg.ClearTimestamps()
+
 	for _, subpackage := range pkg.Subpackages {
 		subpackage.InheritFromParent()
 		subpackage.TakeFilesFromParent()
@@ -585,6 +601,7 @@ func (pkg PackageContext) BuildPackage() {
 
 	pkg.GeneratePackageInfo()
 	pkg.GenerateMTree()
+	pkg.ClearTimestamps()
 	pkg.CompressPackage()
 	if *checkFiles {
 		pkg.VerifyFiles()
