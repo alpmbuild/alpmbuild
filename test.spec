@@ -7,7 +7,7 @@ Epoch:   5
 License: GPL
 URL:     https://gnu.org
 
-Source0: https://ftp.gnu.org/gnu/hello/%{name}-%{version}.tar.gz
+Source0: https://ftp.gnu.org/gnu/hello/%{name}-%{version}.tar.gz with md5 6cd0ffea3884a4e79330338dcc2987d6
 #!alpmbuild ReasonFor cyanogen: This is a really cool package
 Recommends: cyanogen
 %if 0

@@ -170,15 +170,64 @@ mainParseLoop:
 				continue mainParseLoop
 			}
 
-			// Let's worry about our sources first...
-			if strings.HasPrefix(strings.ToLower(words[0]), "source") {
-				lex.Sources = append(lex.Sources, evalInlineMacros(words[1], lex))
-				continue mainParseLoop
-			}
-
-			// And then our patches...
-			if strings.HasPrefix(strings.ToLower(words[0]), "patch") {
-				lex.Patches = append(lex.Patches, evalInlineMacros(words[1], lex))
+			// Let's worry about our sources and patches...
+			if strings.HasPrefix(strings.ToLower(words[0]), "source") || strings.HasPrefix(strings.ToLower(words[0]), "patch") {
+				source := Source{
+					URL: evalInlineMacros(words[1], lex),
+				}
+				if len(words) > 2 {
+					slice := words[2:]
+					for index, word := range slice {
+						if word == "with" {
+							if len(slice) > index+2 {
+								hashType := slice[index+1]
+								hashWord := slice[index+2]
+								switch hashType {
+								case "sha1":
+									source.Sha1 = hashWord
+								case "sha224":
+									source.Sha224 = hashWord
+								case "sha256":
+									source.Sha256 = hashWord
+								case "sha384":
+									source.Sha384 = hashWord
+								case "sha512":
+									source.Sha512 = hashWord
+								case "md5":
+									source.Md5 = hashWord
+								default:
+									outputErrorHighlight(
+										"Invalid hash type on line "+strconv.Itoa(currentLine+1),
+										line,
+										"Did you mean to use "+highlight(ClosestString(hashType, hashTypes))+"?",
+										strings.Index(line, hashType), len(hashType),
+									)
+								}
+							} else {
+								if len(slice) > index+1 {
+									outputErrorHighlight(
+										"Incomplete hash directive on line "+strconv.Itoa(currentLine+1),
+										line,
+										"Add a hash to the end of the line to resolve this error.",
+										0, 0,
+									)
+								} else {
+									outputErrorHighlight(
+										"Incomplete hash directive on line "+strconv.Itoa(currentLine+1),
+										line,
+										"Valid hash types are: "+strings.Join(hashTypes, ", "),
+										0, 0,
+									)
+								}
+							}
+						}
+					}
+				}
+				if strings.HasPrefix(strings.ToLower(words[0]), "source") {
+					lex.Sources = append(lex.Sources, source)
+				} else {
+					lex.Sources = append(lex.Patches, source)
+				}
 				continue mainParseLoop
 			}
 

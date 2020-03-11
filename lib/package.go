@@ -1,6 +1,11 @@
 package lib
 
 import (
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -98,6 +103,37 @@ var packageFields = []string{
 	"buildrequires:",
 }
 
+type HashType int
+
+const (
+	NoHash HashType = iota
+	Sha1Hash
+	Sha224Hash
+	Sha256Hash
+	Sha384Hash
+	Sha512Hash
+	Md5Hash
+)
+
+var hashTypes = []string{
+	"sha1",
+	"sha224",
+	"sha256",
+	"sha384",
+	"sha512",
+	"md5",
+}
+
+type Source struct {
+	URL    string
+	Md5    string
+	Sha1   string
+	Sha256 string
+	Sha224 string
+	Sha384 string
+	Sha512 string
+}
+
 type PackageContext struct {
 	// Single-value fields with relatively standard behaviour.
 	Name    string `macro:"name" key:"name:" pkginfo:"pkgname"`
@@ -116,8 +152,8 @@ type PackageContext struct {
 	Release string `macro:"release" key:"release:"`
 
 	// Nonstandard array fields
-	Sources []string
-	Patches []string
+	Sources []Source
+	Patches []Source
 	Files   []string
 
 	// Command fields
@@ -286,20 +322,93 @@ func (pkg PackageContext) setupSources() error {
 		return err
 	}
 
-	handleSource := func(url string) error {
-		if isValidUrl(url) {
-			outputStatus("Downloading " + highlight(url) + "...")
-			err := downloadFile(filepath.Join(home, "alpmbuild/sources", path.Base(url)), url)
+	handleSource := func(source Source) error {
+		if isValidUrl(source.URL) {
+			if !*fakeroot {
+				outputStatus("Downloading " + highlight(source.URL) + "...")
+			}
+			err := downloadFile(filepath.Join(home, "alpmbuild/sources", path.Base(source.URL)), source.URL)
 			if err != nil {
 				return err
 			}
-			_, err = copyFile(filepath.Join(home, "alpmbuild/sources", path.Base(url)), filepath.Join(home, "alpmbuild/buildroot", path.Base(url)))
+			_, err = copyFile(filepath.Join(home, "alpmbuild/sources", path.Base(source.URL)), filepath.Join(home, "alpmbuild/buildroot", path.Base(source.URL)))
 			if err != nil {
 				return err
+			}
+			data, err := ioutil.ReadFile(filepath.Join(home, "alpmbuild/sources", path.Base(source.URL)))
+			if err != nil {
+				return err
+			}
+			badChecksum := func(filename, expected, actual string) {
+				outputError(
+					fmt.Sprintf(
+						"Checksum failure for %s: expected %s, but got %s",
+						highlight(filename),
+						highlight(expected),
+						highlight(actual),
+					),
+				)
+			}
+			if source.Sha1 != "" {
+				if !*fakeroot {
+					outputStatus("Checking sha1 integrity of " + highlight(source.URL) + "...")
+				}
+				sum := sha1.Sum(data)
+				if hex.EncodeToString(sum[:]) != source.Sha1 {
+					badChecksum(path.Base(source.URL), source.Sha1, hex.EncodeToString(sum[:]))
+				}
+			}
+			if source.Sha224 != "" {
+				if !*fakeroot {
+					outputStatus("Checking sha224 integrity of " + highlight(source.URL) + "...")
+				}
+				sum := sha256.Sum224(data)
+				if hex.EncodeToString(sum[:]) != source.Sha224 {
+					badChecksum(path.Base(source.URL), source.Sha1, hex.EncodeToString(sum[:]))
+				}
+			}
+			if source.Sha256 != "" {
+				if !*fakeroot {
+					outputStatus("Checking sha256 integrity of " + highlight(source.URL) + "...")
+				}
+				sum := sha256.Sum256(data)
+				if hex.EncodeToString(sum[:]) != source.Sha256 {
+					badChecksum(path.Base(source.URL), source.Sha256, hex.EncodeToString(sum[:]))
+				}
+			}
+			if source.Sha384 != "" {
+				if !*fakeroot {
+					outputStatus("Checking sha384 integrity of " + highlight(source.URL) + "...")
+				}
+				sum := sha512.Sum384(data)
+				if hex.EncodeToString(sum[:]) != source.Sha384 {
+					badChecksum(path.Base(source.URL), source.Sha384, hex.EncodeToString(sum[:]))
+				}
+			}
+			if source.Sha512 != "" {
+				if !*fakeroot {
+					outputStatus("Checking sha512 integrity of " + highlight(source.URL) + "...")
+				}
+				sum := sha512.Sum512(data)
+				if hex.EncodeToString(sum[:]) != source.Sha512 {
+					badChecksum(path.Base(source.URL), source.Sha512, hex.EncodeToString(sum[:]))
+				}
+			}
+			if source.Md5 != "" {
+				if !*fakeroot {
+					outputStatus("Checking md5 integrity of " + highlight(source.URL) + "...")
+				}
+				sum := md5.Sum(data)
+				if hex.EncodeToString(sum[:]) != source.Md5 {
+					badChecksum(path.Base(source.URL), source.Md5, hex.EncodeToString(sum[:]))
+				}
 			}
 		} else {
-			outputStatus("Copying " + highlight(url) + " to build directory...")
-			_, err := copyFile(filepath.Join(home, "alpmbuild/sources", url), filepath.Join(home, "alpmbuild/buildroot", url))
+			if !*fakeroot {
+				outputStatus("Downloading " + highlight(source.URL) + "...")
+			}
+			outputStatus("Copying " + highlight(source.URL) + " to build directory...")
+			_, err := copyFile(filepath.Join(home, "alpmbuild/sources", source.URL), filepath.Join(home, "alpmbuild/buildroot", source.URL))
 			if err != nil {
 				return err
 			}
@@ -464,8 +573,8 @@ func (pkg PackageContext) GenerateSourcePackage() {
 		outputError("There was an error obtaining the home directory")
 	}
 	for _, source := range pkg.Sources {
-		if !isValidUrl(source) {
-			_, err := copyFile(filepath.Join(home, "alpmbuild/sources", source), filepath.Join(home, "alpmbuild/sourcepackages", source))
+		if !isValidUrl(source.URL) {
+			_, err := copyFile(filepath.Join(home, "alpmbuild/sources", source.URL), filepath.Join(home, "alpmbuild/sourcepackages", source.URL))
 			if err != nil {
 				outputError("There was an error copying sources into the source package")
 			}

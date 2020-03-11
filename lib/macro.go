@@ -92,17 +92,17 @@ func evalInlineMacros(input string, context PackageContext) string {
 			script += `mkdir -p %{buildsubdir}
 cd %{buildsubdir}` + "\n"
 		} else if !*skipDefaultSource {
-			script += fmt.Sprintf("%s\n", getExtractCommandForName(context.Sources[0], *unpackQuietly))
+			script += fmt.Sprintf("%s\n", getExtractCommandForName(context.Sources[0].URL, *unpackQuietly))
 		}
 
 		if !*createDir {
 			script += "cd %{buildsubdir}\n"
 		} else if !*skipDefaultSource {
-			script += fmt.Sprintf("%s\n", getExtractCommandForName(context.Sources[0], *unpackQuietly))
+			script += fmt.Sprintf("%s\n", getExtractCommandForName(context.Sources[0].URL, *unpackQuietly))
 		}
 
 		for _, source := range context.Sources[1:] {
-			script += fmt.Sprintf("%s\n", getExtractCommandForName(source, *unpackQuietly))
+			script += fmt.Sprintf("%s\n", getExtractCommandForName(source.URL, *unpackQuietly))
 		}
 
 		mutate = script
