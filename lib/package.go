@@ -66,6 +66,9 @@ var PossibleKeys = []string{
 	"Version:",
 	"Release:",
 	"Epoch:",
+	"EpochVersionRelease:",
+	"EpoVerRel:",
+	"EVR:",
 }
 
 var PossibleDirectives = []string{

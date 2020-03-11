@@ -265,6 +265,27 @@ mainParseLoop:
 			// Loop through the fields of the package context in order to see if any of the annotated key values match the line we're on
 			for i := 0; i < num; i++ {
 				field := fields.Field(i)
+				// Special case: VRE (Version, Release, Epoch)
+				// Epoch:Version-Release
+				if strings.ToLower(words[0]) == "epoverrel:" || strings.ToLower(words[0]) == "evr:" || strings.ToLower(words[0]) == "epochversionrelease:" {
+					toLex := evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex)
+					split := strings.FieldsFunc(toLex, func(r rune) bool {
+						return strings.ContainsRune("-:", r)
+					})
+					if len(split) < 3 {
+						outputErrorHighlight(
+							"Invalid Epoch-Versions-Release string on line "+strconv.Itoa(currentLine+1),
+							line,
+							"Epoch-Versions-Release strings are in the following format: "+highlight("Epoch:Version-Release"),
+							strings.Index(line, strings.TrimSpace(strings.TrimPrefix(line, words[0]))),
+							len(strings.TrimSpace(strings.TrimPrefix(line, words[0]))),
+						)
+					}
+					currentPackage.Epoch = split[0]
+					currentPackage.Version = split[1]
+					currentPackage.Release = split[2]
+					hasSet = true
+				}
 				// These are the single-value keys, such as Name, Version, Release, and Summary
 				if strings.ToLower(words[0]) == field.Tag.Get("key") {
 					// We assert that packageContext only has string fields here.

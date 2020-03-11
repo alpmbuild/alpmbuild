@@ -1,8 +1,6 @@
 Name:    hello
-Version: 2.10
-Release: 0
+EVR:     5:2.10-0
 Summary: Hello World
-Epoch:   5
 
 License: GPL
 URL:     https://gnu.org
