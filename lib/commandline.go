@@ -53,7 +53,7 @@ func (i *arrayFlag) Set(value string) error {
 func Enter() {
 	// Alpmbuild-unique flags
 	buildFile = flag.String("file", "", "The file to build.")
-	checkFiles = flag.Bool("strictFiles", true, "Strictly check %files for the main package")
+	checkFiles = flag.Bool("strictFiles", false, "Strictly check %files for the main package")
 	hideCommandOutput = flag.Bool("hideCommandOutput", false, "Hide package command output")
 	useColours = flag.Bool("useColours", true, "Use colours for output.")
 	generateSourcePackage = flag.Bool("generateSourcePackage", true, "Generate a source package")
