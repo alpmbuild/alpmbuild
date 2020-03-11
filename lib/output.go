@@ -76,7 +76,13 @@ func outputErrorHighlight(message, lineToHighlight, additionalMessage string, st
 }
 
 func outputWarningHighlight(message, lineToHighlight, additionalMessage string, startIndex, length int) {
-	if len(lineToHighlight) < startIndex+length+1 {
+	if *fakeroot {
+		return
+	}
+	if len(lineToHighlight) < startIndex+length {
+		return
+	}
+	if startIndex < 0 {
 		return
 	}
 	lineToHighlight = strings.Replace(lineToHighlight, lineToHighlight[startIndex:startIndex+length], highlight(lineToHighlight[startIndex:startIndex+length]), 1)

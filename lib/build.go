@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"fmt"
 	"io/ioutil"
 	"reflect"
 	"regexp"
@@ -30,7 +31,9 @@ import (
 */
 
 func ParsePackage(data string) PackageContext {
-	outputStatus("Parsing package...")
+	if !*fakeroot {
+		outputStatus("Parsing package...")
+	}
 
 	lex := PackageContext{}
 
@@ -60,19 +63,23 @@ mainParseLoop:
 				macros := librpm.DumpMacroNamesAsString()
 
 				if len(macros) > 0 {
-					outputWarningHighlight(
-						"Macro not expanded on line "+strconv.Itoa(currentLine+1)+": "+highlight(matchString),
-						line,
-						"Did you mean to use "+highlight("%{"+ClosestString(matchString, macros)+"}")+"?",
-						strings.Index(line, matchString), len(matchString),
-					)
+					if !*fakeroot {
+						outputWarningHighlight(
+							"Macro not expanded on line "+strconv.Itoa(currentLine+1)+": "+highlight(matchString),
+							line,
+							"Did you mean to use "+highlight("%{"+ClosestString(matchString, macros)+"}")+"?",
+							strings.Index(line, matchString), len(matchString),
+						)
+					}
 				} else {
-					outputWarningHighlight(
-						"Macro not expanded on line "+strconv.Itoa(currentLine+1)+": "+highlight(matchString),
-						line,
-						"",
-						strings.Index(line, matchString), len(matchString),
-					)
+					if !*fakeroot {
+						outputWarningHighlight(
+							"Macro not expanded on line "+strconv.Itoa(currentLine+1)+": "+highlight(matchString),
+							line,
+							"",
+							strings.Index(line, matchString), len(matchString),
+						)
+					}
 				}
 			}
 		}
@@ -130,22 +137,26 @@ mainParseLoop:
 						)
 					}
 				default:
-					outputWarningHighlight(
-						"Invalid #!alpmbuild directive "+highlight(fields[1])+"on line "+strconv.Itoa(currentLine+1),
-						line,
-						"Did you mean to use "+highlight(ClosestString(fields[1], PossibleDirectives))+"?",
-						strings.Index(line, fields[1]), len(fields[1]),
-					)
+					if !*fakeroot {
+						outputWarningHighlight(
+							"Invalid #!alpmbuild directive "+highlight(fields[1])+"on line "+strconv.Itoa(currentLine+1),
+							line,
+							"Did you mean to use "+highlight(ClosestString(fields[1], PossibleDirectives))+"?",
+							strings.Index(line, fields[1]), len(fields[1]),
+						)
+					}
 					continue mainParseLoop
 				}
 			}
 
-			outputWarningHighlight(
-				"#!alpmbuild directive missing type",
-				line,
-				"",
-				0, 0,
-			)
+			if !*fakeroot {
+				outputWarningHighlight(
+					"#!alpmbuild directive missing type",
+					line,
+					"",
+					0, 0,
+				)
+			}
 		}
 
 		// Let's parse the key-value lines
@@ -210,6 +221,30 @@ mainParseLoop:
 					key := reflect.ValueOf(&currentPackage).Elem().FieldByName(field.Name)
 					if key.IsValid() {
 						itemArray := strings.Split(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex), " ")
+						if !*ignoreDeps && !*fakeroot {
+							for _, packageField := range packageFields {
+								if field.Tag.Get("keyArray") == packageField {
+									for _, item := range itemArray {
+										if correction, needed := lintDependency(item); needed {
+											outputWarningHighlight(
+												fmt.Sprintf(
+													"Dependent package %s does not exist in repositories on line %s",
+													highlight(item),
+													strconv.Itoa(currentLine+1),
+												),
+												line,
+												fmt.Sprintf(
+													"Did you mean to use %s?",
+													highlight(correction),
+												),
+												strings.Index(line, item),
+												len(item),
+											)
+										}
+									}
+								}
+							}
+						}
 
 						key.Set(reflect.AppendSlice(key, reflect.ValueOf(itemArray)))
 						hasSet = true
@@ -224,12 +259,14 @@ mainParseLoop:
 			}
 
 			if !hasSet {
-				outputErrorHighlight(
-					highlight(words[0])+" is not a valid key on line "+strconv.Itoa(currentLine+1),
-					line,
-					"Did you mean to use "+highlight(ClosestString(words[0], PossibleKeys))+"?",
-					strings.Index(line, words[0]), len(words[0]),
-				)
+				if !*fakeroot {
+					outputErrorHighlight(
+						highlight(words[0])+" is not a valid key on line "+strconv.Itoa(currentLine+1),
+						line,
+						"Did you mean to use "+highlight(ClosestString(words[0], PossibleKeys))+"?",
+						strings.Index(line, words[0]), len(words[0]),
+					)
+				}
 			}
 			continue mainParseLoop
 		}
@@ -373,6 +410,8 @@ mainParseLoop:
 		outputError("Could not parse line " + strconv.Itoa(currentLine+1) + ":\n          " + line)
 	}
 
+	promptMissingDepsInstall(lex)
+
 	lex.BuildPackage()
 
 	return lex
@@ -380,7 +419,9 @@ mainParseLoop:
 
 // Build : Build a specfile, generating an Arch package.
 func Build(pathToRecipe string) error {
-	outputStatus("Reading specfile from " + pathToRecipe + "...")
+	if !*fakeroot {
+		outputStatus("Reading specfile from " + pathToRecipe + "...")
+	}
 	data, err := ioutil.ReadFile(pathToRecipe)
 	if err != nil {
 		return err

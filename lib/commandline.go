@@ -3,7 +3,6 @@ package lib
 import (
 	"flag"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/appadeia/alpmbuild/lib/librpm"
@@ -35,6 +34,9 @@ var generateSourcePackage *bool
 var buildFile *string
 var startPWD string
 var compressionType *string
+var fakeroot *bool
+var ignoreDeps *bool
+var initialWorking string
 
 type arrayFlag []string
 
@@ -56,7 +58,9 @@ func Enter() {
 	useColours = flag.Bool("useColours", true, "Use colours for output.")
 	generateSourcePackage = flag.Bool("generateSourcePackage", true, "Generate a source package")
 	compressionType = flag.String("compression", "zstd", "The compression type to use. Default is zstd. Choose from: gz, xz, bz2, or zstd.")
-	fakeroot := flag.Bool("fakeroot", false, "Internal flag. Do not set.")
+	ignoreDeps = flag.Bool("ignoreDeps", false, "Ignore dependencies.")
+	fakeroot = flag.Bool("fakeroot", false, "Internal flag. Do not set.")
+	initialWorking, _ = os.Getwd()
 
 	flag.Parse()
 
@@ -66,14 +70,6 @@ func Enter() {
 	ba := flag.String("ba", "", "Copies rpmbuild -ba's behaviour")
 	flag.Var(&macros, "D", "Define a macro with MACRO EXPR")
 	flag.Var(&macros, "define", "Define a macro with MACRO EXPR")
-
-	if !*fakeroot {
-		cmd := exec.Command("fakeroot", append(os.Args, "-fakeroot")...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Run()
-		return
-	}
 
 	if _, ok := CompressionTypes[*compressionType]; !ok {
 		outputError(*compressionType + " is not a valid compression method.")

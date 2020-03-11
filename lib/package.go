@@ -92,6 +92,12 @@ var CompressionTypes = map[string]CompressionType{
 	},
 }
 
+var packageFields = []string{
+	"requires:",
+	"recommends:",
+	"buildrequires:",
+}
+
 type PackageContext struct {
 	// Single-value fields with relatively standard behaviour.
 	Name    string `macro:"name" key:"name:" pkginfo:"pkgname"`
@@ -249,7 +255,9 @@ func (pkg PackageContext) GenerateMTree() {
 }
 
 func setupDirectories() error {
-	outputStatus("Setting up directories...")
+	if !*fakeroot {
+		outputStatus("Setting up directories...")
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -270,7 +278,9 @@ func setupDirectories() error {
 }
 
 func (pkg PackageContext) setupSources() error {
-	outputStatus("Verifiying sources...")
+	if !*fakeroot {
+		outputStatus("Verifiying sources...")
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -280,6 +290,10 @@ func (pkg PackageContext) setupSources() error {
 		if isValidUrl(url) {
 			outputStatus("Downloading " + highlight(url) + "...")
 			err := downloadFile(filepath.Join(home, "alpmbuild/sources", path.Base(url)), url)
+			if err != nil {
+				return err
+			}
+			_, err = copyFile(filepath.Join(home, "alpmbuild/sources", path.Base(url)), filepath.Join(home, "alpmbuild/buildroot", path.Base(url)))
 			if err != nil {
 				return err
 			}
@@ -486,7 +500,9 @@ func (pkg *PackageContext) InheritFromParent() {
 }
 
 func (pkg PackageContext) BuildPackage() {
-	outputStatus("Building package " + highlight(pkg.GetNevra()) + "...")
+	if !*fakeroot {
+		outputStatus("Building package " + highlight(pkg.GetNevra()) + "...")
+	}
 	err := setupDirectories()
 	if err != nil {
 		outputError(fmt.Sprintf("Error setting up directories:\n\t%s", err.Error()))
@@ -508,16 +524,30 @@ func (pkg PackageContext) BuildPackage() {
 
 	// Prepare commands.
 	var commands []string
+	var installCommands []string
+
 	commands = append(commands, pkg.Commands.Prepare...)
 	commands = append(commands, pkg.Commands.Build...)
-	commands = append(commands, pkg.Commands.Install...)
+	installCommands = append(installCommands, pkg.Commands.Install...)
 
 	path, err := writeTempfile(strings.Join(commands, "\n"))
 	if err != nil {
 		outputError("There was an error preparing a temporary file.")
 	}
 
-	cmd := exec.Command("sh", path)
+	installPath, err := writeTempfile(strings.Join(commands, "\n"))
+	if err != nil {
+		outputError("There was an error preparing a temporary file.")
+	}
+
+	var pathToUse string
+	if *fakeroot {
+		pathToUse = installPath
+	} else {
+		pathToUse = path
+	}
+
+	cmd := exec.Command("sh", pathToUse)
 	cmd.Env = env
 
 	if !*hideCommandOutput {
@@ -525,9 +555,21 @@ func (pkg PackageContext) BuildPackage() {
 		cmd.Stderr = os.Stderr
 	}
 
+	if !*fakeroot {
+		outputStatus("Building...")
+	}
 	err = cmd.Run()
 	if err != nil {
 		outputError("Exit status was non-zero in build script, aborting...")
+	}
+
+	if !*fakeroot {
+		os.Chdir(initialWorking)
+		cmd := exec.Command("fakeroot", append(os.Args, "-fakeroot")...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+		return
 	}
 
 	outputStatus("Running package commands...")
