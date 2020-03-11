@@ -316,7 +316,7 @@ mainParseLoop:
 												),
 												line,
 												fmt.Sprintf(
-													"Package identifies can include %s, %s, %s, %s, %s, and %s",
+													"Package identifiers can include %s, %s, %s, %s, %s, and %s",
 													highlight("alphanumeric characters"),
 													highlight("+"),
 													highlight("_"),
