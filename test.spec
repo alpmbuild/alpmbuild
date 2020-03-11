@@ -18,6 +18,7 @@ Requires: base pingas
 BuildRequires: gcc
 BuildRequires: make
 BuildRequires: gettext
+Provides: ohnein!@#*&!@#
 
 %install
 mkdir -p %{?buildroot}/%{_bindir}

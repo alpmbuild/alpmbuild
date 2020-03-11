@@ -8,14 +8,49 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/appadeia/alpmbuild/lib/libalpm"
 )
 
 var pkgNames []string
 var pkgNamesInitted bool = false
+
+type BadNameReason int
+
+const (
+	ValidName BadNameReason = iota
+	EmptyName
+	StartsWithHyphen
+	StartsWithDot
+	NonASCIICharacter
+	NonAlphanumericCharacters
+)
+
+func lintPackageName(name string) (BadNameReason, int) {
+	if name == "" {
+		return EmptyName, -1
+	}
+	if strings.HasPrefix(name, "-") {
+		return StartsWithHyphen, 0
+	}
+	if strings.HasPrefix(name, ".") {
+		return StartsWithDot, 0
+	}
+	for i := 0; i < len(name); i++ {
+		if name[i] > unicode.MaxASCII {
+			return NonASCIICharacter, strings.Index(name, string(name[i]))
+		}
+	}
+	isNonAlphaNum := regexp.MustCompile(`[^a-zA-Z0-9 +_.@-]{1,255}`)
+	if matches := isNonAlphaNum.FindAllString(name, -1); len(matches) > 0 {
+		return NonAlphanumericCharacters, strings.Index(name, matches[0])
+	}
+	return ValidName, -1
+}
 
 func lintDependency(name string) (string, bool) {
 	if !pkgNamesInitted {

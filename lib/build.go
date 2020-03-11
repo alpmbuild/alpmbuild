@@ -307,6 +307,27 @@ mainParseLoop:
 							for _, packageField := range packageFields {
 								if field.Tag.Get("keyArray") == packageField {
 									for _, item := range itemArray {
+										if err, _ := lintPackageName(item); err != ValidName {
+											outputErrorHighlight(
+												fmt.Sprintf(
+													"%s is not a valid package identifier on line %s",
+													highlight(item),
+													strconv.Itoa(currentLine+1),
+												),
+												line,
+												fmt.Sprintf(
+													"Package identifies can include %s, %s, %s, %s, %s, and %s",
+													highlight("alphanumeric characters"),
+													highlight("+"),
+													highlight("_"),
+													highlight("."),
+													highlight("@"),
+													highlight("-"),
+												),
+												strings.Index(line, item),
+												len(item),
+											)
+										}
 										if correction, needed := lintDependency(item); needed {
 											outputWarningHighlight(
 												fmt.Sprintf(

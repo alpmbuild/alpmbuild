@@ -69,6 +69,9 @@ var PossibleKeys = []string{
 	"EpochVersionRelease:",
 	"EpoVerRel:",
 	"EVR:",
+	"Provides:",
+	"Conflicts:",
+	"Replaces:",
 }
 
 var PossibleDirectives = []string{
@@ -104,6 +107,9 @@ var packageFields = []string{
 	"requires:",
 	"recommends:",
 	"buildrequires:",
+	"provides:",
+	"conflicts:",
+	"replaces:",
 }
 
 type HashType int
@@ -150,6 +156,9 @@ type PackageContext struct {
 	Requires      []string `keyArray:"requires:" pkginfo:"depend"`
 	Recommends    []string `keyArray:"recommends:" pkginfo:"optdepend"`
 	BuildRequires []string `keyArray:"buildrequires:" pkginfo:"makedepend"`
+	Provides      []string `keyArray:"provides:" pkginfo:"provides"`
+	Conflicts     []string `keyArray:"conflicts:" pkginfo:"conflicts"`
+	Replaces      []string `keyArray:"replaces:" pkginfo:"replaces"`
 
 	// Nonstandard single-value fields
 	Version string `macro:"version" key:"version:"`
