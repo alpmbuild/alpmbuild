@@ -126,6 +126,7 @@ var hashTypes = []string{
 
 type Source struct {
 	URL    string
+	Rename string
 	Md5    string
 	Sha1   string
 	Sha256 string
@@ -323,6 +324,10 @@ func (pkg PackageContext) setupSources() error {
 	}
 
 	handleSource := func(source Source) error {
+		target := filepath.Join(home, "alpmbuild/buildroot", path.Base(source.URL))
+		if source.Rename != "" {
+			target = filepath.Join(home, "alpmbuild/buildroot", source.Rename)
+		}
 		if isValidUrl(source.URL) {
 			if !*fakeroot {
 				outputStatus("Downloading " + highlight(source.URL) + "...")
@@ -331,7 +336,10 @@ func (pkg PackageContext) setupSources() error {
 			if err != nil {
 				return err
 			}
-			_, err = copyFile(filepath.Join(home, "alpmbuild/sources", path.Base(source.URL)), filepath.Join(home, "alpmbuild/buildroot", path.Base(source.URL)))
+			if source.Rename != "" && !*fakeroot {
+				outputStatus(fmt.Sprintf("Renaming %s to %s...", highlight(path.Base(source.URL)), highlight(source.Rename)))
+			}
+			_, err = copyFile(filepath.Join(home, "alpmbuild/sources", path.Base(source.URL)), target)
 			if err != nil {
 				return err
 			}
@@ -351,56 +359,56 @@ func (pkg PackageContext) setupSources() error {
 			}
 			if source.Sha1 != "" {
 				if !*fakeroot {
-					outputStatus("Checking sha1 integrity of " + highlight(source.URL) + "...")
+					outputStatus("Checking sha1 integrity of " + path.Base(target) + "...")
 				}
 				sum := sha1.Sum(data)
 				if hex.EncodeToString(sum[:]) != source.Sha1 {
-					badChecksum(path.Base(source.URL), source.Sha1, hex.EncodeToString(sum[:]))
+					badChecksum(path.Base(target), source.Sha1, hex.EncodeToString(sum[:]))
 				}
 			}
 			if source.Sha224 != "" {
 				if !*fakeroot {
-					outputStatus("Checking sha224 integrity of " + highlight(source.URL) + "...")
+					outputStatus("Checking sha224 integrity of " + highlight(path.Base(target)) + "...")
 				}
 				sum := sha256.Sum224(data)
 				if hex.EncodeToString(sum[:]) != source.Sha224 {
-					badChecksum(path.Base(source.URL), source.Sha1, hex.EncodeToString(sum[:]))
+					badChecksum(path.Base(target), source.Sha1, hex.EncodeToString(sum[:]))
 				}
 			}
 			if source.Sha256 != "" {
 				if !*fakeroot {
-					outputStatus("Checking sha256 integrity of " + highlight(source.URL) + "...")
+					outputStatus("Checking sha256 integrity of " + highlight(path.Base(target)) + "...")
 				}
 				sum := sha256.Sum256(data)
 				if hex.EncodeToString(sum[:]) != source.Sha256 {
-					badChecksum(path.Base(source.URL), source.Sha256, hex.EncodeToString(sum[:]))
+					badChecksum(path.Base(target), source.Sha256, hex.EncodeToString(sum[:]))
 				}
 			}
 			if source.Sha384 != "" {
 				if !*fakeroot {
-					outputStatus("Checking sha384 integrity of " + highlight(source.URL) + "...")
+					outputStatus("Checking sha384 integrity of " + highlight(path.Base(target)) + "...")
 				}
 				sum := sha512.Sum384(data)
 				if hex.EncodeToString(sum[:]) != source.Sha384 {
-					badChecksum(path.Base(source.URL), source.Sha384, hex.EncodeToString(sum[:]))
+					badChecksum(path.Base(target), source.Sha384, hex.EncodeToString(sum[:]))
 				}
 			}
 			if source.Sha512 != "" {
 				if !*fakeroot {
-					outputStatus("Checking sha512 integrity of " + highlight(source.URL) + "...")
+					outputStatus("Checking sha512 integrity of " + highlight(path.Base(target)) + "...")
 				}
 				sum := sha512.Sum512(data)
 				if hex.EncodeToString(sum[:]) != source.Sha512 {
-					badChecksum(path.Base(source.URL), source.Sha512, hex.EncodeToString(sum[:]))
+					badChecksum(path.Base(target), source.Sha512, hex.EncodeToString(sum[:]))
 				}
 			}
 			if source.Md5 != "" {
 				if !*fakeroot {
-					outputStatus("Checking md5 integrity of " + highlight(source.URL) + "...")
+					outputStatus("Checking md5 integrity of " + highlight(path.Base(target)) + "...")
 				}
 				sum := md5.Sum(data)
 				if hex.EncodeToString(sum[:]) != source.Md5 {
-					badChecksum(path.Base(source.URL), source.Md5, hex.EncodeToString(sum[:]))
+					badChecksum(path.Base(target), source.Md5, hex.EncodeToString(sum[:]))
 				}
 			}
 		} else {
@@ -408,7 +416,10 @@ func (pkg PackageContext) setupSources() error {
 				outputStatus("Downloading " + highlight(source.URL) + "...")
 			}
 			outputStatus("Copying " + highlight(source.URL) + " to build directory...")
-			_, err := copyFile(filepath.Join(home, "alpmbuild/sources", source.URL), filepath.Join(home, "alpmbuild/buildroot", source.URL))
+			if source.Rename != "" && !*fakeroot {
+				outputStatus(fmt.Sprintf("Renaming %s to %s...", highlight(path.Base(source.URL)), highlight(source.Rename)))
+			}
+			_, err := copyFile(filepath.Join(home, "alpmbuild/sources", source.URL), filepath.Join(home, "alpmbuild/buildroot", target))
 			if err != nil {
 				return err
 			}

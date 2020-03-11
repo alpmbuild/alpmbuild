@@ -221,6 +221,18 @@ mainParseLoop:
 								}
 							}
 						}
+						if word == "renamed" {
+							if len(slice) > index+1 {
+								source.Rename = evalInlineMacros(slice[index+1], lex)
+							} else {
+								outputErrorHighlight(
+									"Incomplete rename directive on line "+strconv.Itoa(currentLine+1),
+									line,
+									"Provide a name to resolve this error.",
+									strings.Index(line, word), len(word),
+								)
+							}
+						}
 					}
 				}
 				if strings.HasPrefix(strings.ToLower(words[0]), "source") {
