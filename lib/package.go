@@ -672,7 +672,7 @@ func (pkg PackageContext) BuildPackage() {
 		outputError("There was an error preparing a temporary file.")
 	}
 
-	installPath, err := writeTempfile(strings.Join(commands, "\n"))
+	installPath, err := writeTempfile(strings.Join(installCommands, "\n"))
 	if err != nil {
 		outputError("There was an error preparing a temporary file.")
 	}
