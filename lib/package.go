@@ -530,6 +530,11 @@ func (pkg PackageContext) setupSources() error {
 			if err != nil {
 				return err
 			}
+			hasKey := func(key string) bool {
+				cmd := exec.Command("gpg", "--list-keys", "0x"+key)
+				cmd.Run()
+				return cmd.ProcessState.ExitCode() == 0
+			}
 			handleSig := func(key, server string) {
 				println(bold("  Do you want to try importing the key with ID ") + highlight(key) + bold(" from keyserver ") + highlight(server))
 				println(bold("  [y/N]"))
@@ -553,7 +558,9 @@ func (pkg PackageContext) setupSources() error {
 			for _, keyserver := range source.GPGKeyservers {
 				for _, key := range source.GPGKeys {
 					if !*fakeroot {
-						handleSig(key, keyserver)
+						if !hasKey(key) {
+							handleSig(key, keyserver)
+						}
 					}
 				}
 			}
