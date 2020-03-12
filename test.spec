@@ -18,21 +18,17 @@ Requires: base pingas
 BuildRequires: gcc
 BuildRequires: make
 BuildRequires: gettext
-Provides: ohnein!@#*&!@#
 
 %install
 mkdir -p %{?buildroot}/%{_bindir}
 mkdir -p %{?buildroot}/%{_datadir}/info
 mkdir -p %{?buildroot}/%{_datadir}/man/man1
 mkdir -p %{?buildroot}/%{_datadir}/locale/en_US/LC_MESSAGES/
-touch %{?buildroot}/.dotfile
 touch %{?buildroot}/%{_bindir}/hello
 touch %{?buildroot}/%{_datadir}/info/dir
 touch %{?buildroot}/%{_datadir}/info/hello.info
-echo %{?buildroot} > %{?buildroot}/%{_datadir}/man/man1/hello.1
+touch %{?buildroot}/%{_datadir}/man/man1/hello.1
 touch %{?buildroot}/%{_datadir}/locale/en_US/LC_MESSAGES/hello.mo
-touch "%{?buildroot}/bad
-filename"
 chown -R root:root %{?buildroot}
 
 %files
@@ -40,6 +36,9 @@ chown -R root:root %{?buildroot}
 %{_datadir}/info/dir
 %{_datadir}/info/hello.info
 %{_datadir}/man/man1/hello.1
+
+%pre_install
+echo lmao
 
 %package translationfiles
 Summary: Translation files for %{name}

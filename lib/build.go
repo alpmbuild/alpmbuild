@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"reflect"
@@ -451,17 +452,23 @@ mainParseLoop:
 			}
 
 			// Now we check to see if we're switching to a new stage
-			if strings.HasPrefix(line, "%prep") {
-				currentStage = PrepareStage
-				continue mainParseLoop
+			var stages = map[string]Stage{
+				"%prep":    PrepareStage,
+				"%build":   BuildStage,
+				"%install": InstallStage,
+
+				"%pre_install":  PreInstallStage,
+				"%post_install": PostInstallStage,
+				"%pre_upgrade":  PreUpgradeStage,
+				"%post_upgrade": PostUpgradeStage,
+				"%pre_remove":   PreRemoveStage,
+				"%post_remove":  PostRemoveStage,
 			}
-			if strings.HasPrefix(line, "%build") {
-				currentStage = BuildStage
-				continue mainParseLoop
-			}
-			if strings.HasPrefix(line, "%install") {
-				currentStage = InstallStage
-				continue mainParseLoop
+			for stageString, stageEnum := range stages {
+				if strings.HasPrefix(line, stageString) {
+					currentStage = stageEnum
+					continue mainParseLoop
+				}
 			}
 			if strings.HasPrefix(line, "%files") {
 				if subpackageName, hasSubpackage := grabFlagFromString(line, "-n", []string{}); hasSubpackage {
@@ -478,17 +485,22 @@ mainParseLoop:
 			}
 
 			// If we're in a stage, we want to append some commands to our list
-			switch currentStage {
-			case PrepareStage:
-				lex.Commands.Prepare = append(lex.Commands.Prepare, evalInlineMacros(line, lex))
+			m := map[Stage]*[]string{
+				PrepareStage:     &lex.Commands.Prepare,
+				BuildStage:       &lex.Commands.Build,
+				InstallStage:     &lex.Commands.Install,
+				PreInstallStage:  &lex.Scriptlets.PreInstall,
+				PostInstallStage: &lex.Scriptlets.PostInstall,
+				PreUpgradeStage:  &lex.Scriptlets.PreUpgrade,
+				PostUpgradeStage: &lex.Scriptlets.PostUpgrade,
+				PreRemoveStage:   &lex.Scriptlets.PreRemove,
+				PostRemoveStage:  &lex.Scriptlets.PostRemove,
+			}
+			if str, ok := m[currentStage]; ok {
+				*str = append(*str, evalInlineMacros(line, lex))
 				continue mainParseLoop
-			case BuildStage:
-				lex.Commands.Build = append(lex.Commands.Build, evalInlineMacros(line, lex))
-				continue mainParseLoop
-			case InstallStage:
-				lex.Commands.Install = append(lex.Commands.Install, evalInlineMacros(line, lex))
-				continue mainParseLoop
-			case FileStage:
+			}
+			if currentStage == FileStage {
 				if currentFilesSubpackage == "" {
 					lex.Files = append(lex.Files, evalInlineMacros(line, lex))
 				} else {
@@ -520,6 +532,11 @@ mainParseLoop:
 			outputStatus("Automatically setting up package...")
 		}
 		lex.Commands.Prepare = append(lex.Commands.Prepare, evalInlineMacros("%setup -q", lex))
+	}
+
+	p, err := json.MarshalIndent(lex, "", "\t")
+	if err == nil {
+		println(string(p))
 	}
 
 	lex.BuildPackage()

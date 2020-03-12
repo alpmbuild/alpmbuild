@@ -51,6 +51,13 @@ const (
 	InstallStage
 	FileStage
 
+	PreInstallStage
+	PostInstallStage
+	PreUpgradeStage
+	PostUpgradeStage
+	PreRemoveStage
+	PostRemoveStage
+
 	IfTrueStage
 	IfFalseStage
 )
@@ -72,6 +79,7 @@ var PossibleKeys = []string{
 	"Provides:",
 	"Conflicts:",
 	"Replaces:",
+	"Changelog:",
 }
 
 var PossibleDirectives = []string{
@@ -164,6 +172,8 @@ type PackageContext struct {
 	Version string `macro:"version" key:"version:"`
 	Release string `macro:"release" key:"release:"`
 
+	Changelog string `key:"changelog:"`
+
 	// Nonstandard array fields
 	Sources []Source
 	Patches []Source
@@ -174,6 +184,16 @@ type PackageContext struct {
 		Prepare []string
 		Build   []string
 		Install []string
+	}
+
+	// Scriptlet fields
+	Scriptlets struct {
+		PreInstall  []string
+		PostInstall []string
+		PreUpgrade  []string
+		PostUpgrade []string
+		PreRemove   []string
+		PostRemove  []string
 	}
 
 	// Other fields
@@ -279,6 +299,35 @@ func (pkg PackageContext) GeneratePackageInfo() {
 	err = ioutil.WriteFile(filepath.Join(pkgdir, ".PKGINFO"), []byte(packageInfo), 0644)
 	if err != nil {
 		outputError(fmt.Sprintf("Failed to generate pkginfo:\n%s", err.Error()))
+	}
+}
+
+func (pkg PackageContext) GenerateINSTALL() {
+	install := ""
+	m := map[*[]string]string{
+		&pkg.Scriptlets.PreInstall:  "pre_install",
+		&pkg.Scriptlets.PostInstall: "post_install",
+		&pkg.Scriptlets.PreUpgrade:  "pre_upgrade",
+		&pkg.Scriptlets.PostUpgrade: "post_upgrade",
+		&pkg.Scriptlets.PreRemove:   "pre_remove",
+		&pkg.Scriptlets.PostRemove:  "post_remove",
+	}
+	for list, functionName := range m {
+		if len(*list) > 0 {
+			var sb strings.Builder
+			sb.WriteString(functionName)
+			sb.WriteString("() {\n")
+			sb.WriteString(strings.Join(*list, "\n"))
+			sb.WriteString("\n}\n")
+			install += sb.String()
+		}
+	}
+	if install != "" {
+		err := ioutil.WriteFile(filepath.Join(pkg.PackageRoot(), ".INSTALL"), []byte(install), 0775)
+		if err != nil {
+			outputError("Failed to generate scriptlets for package " + highlight(pkg.GetNevra()) + ": " + err.Error())
+		}
+		os.Chown(filepath.Join(pkg.PackageRoot(), ".INSTALL"), 0, 0)
 	}
 }
 
@@ -481,7 +530,7 @@ func (pkg PackageContext) CompressPackage() {
 	clean := exec.Command("find", ".", "-type", "d", "-empty", "-delete")
 	clean.Run()
 
-	cmd := exec.Command("sh", "-c", "bsdtar "+CompressionTypes[*compressionType].Flag+" -cvf"+packagesDir+"/"+pkg.GetNevra()+".pkg.tar."+CompressionTypes[*compressionType].Suffix+" .PKGINFO .MTREE *")
+	cmd := exec.Command("sh", "-c", "shopt -s dotglob; bsdtar "+CompressionTypes[*compressionType].Flag+" -cvf"+packagesDir+"/"+pkg.GetNevra()+".pkg.tar."+CompressionTypes[*compressionType].Suffix+" .PKGINFO .MTREE *")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		outputError(fmt.Sprintf("Creating tarball failed:\n%s", string(output)))
@@ -736,6 +785,7 @@ func (pkg PackageContext) BuildPackage() {
 		subpackage.InheritFromParent()
 		subpackage.TakeFilesFromParent()
 		subpackage.lintAll()
+		subpackage.GenerateINSTALL()
 		subpackage.GeneratePackageInfo()
 		subpackage.GenerateMTree()
 		subpackage.CompressPackage()
@@ -743,6 +793,7 @@ func (pkg PackageContext) BuildPackage() {
 	}
 
 	pkg.lintAll()
+	pkg.GenerateINSTALL()
 	pkg.GeneratePackageInfo()
 	pkg.GenerateMTree()
 	pkg.ClearTimestamps()
