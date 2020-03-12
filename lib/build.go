@@ -349,6 +349,26 @@ mainParseLoop:
 									}
 								}
 							}
+							if field.Tag.Get("keyArray") == "groups:" {
+								for _, item := range itemArray {
+									if correction, needed := lintGroup(item); needed {
+										outputWarningHighlight(
+											fmt.Sprintf(
+												"Group %s does not exist in repositories on line %s",
+												highlight(item),
+												strconv.Itoa(currentLine+1),
+											),
+											line,
+											fmt.Sprintf(
+												"Did you mean to use %s?",
+												highlight(correction),
+											),
+											strings.Index(line, item),
+											len(item),
+										)
+									}
+								}
+							}
 						}
 
 						key.Set(reflect.AppendSlice(key, reflect.ValueOf(itemArray)))

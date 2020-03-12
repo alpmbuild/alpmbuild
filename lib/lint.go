@@ -18,6 +18,8 @@ import (
 
 var pkgNames []string
 var pkgNamesInitted bool = false
+var groupNames []string
+var groupNamesInitted bool = false
 
 type BadNameReason int
 
@@ -65,6 +67,19 @@ func lintDependency(name string) (string, bool) {
 	return ClosestString(name, pkgNames), true
 }
 
+func lintGroup(name string) (string, bool) {
+	if !groupNamesInitted {
+		groupNames = libalpm.ListGroups()
+		groupNamesInitted = true
+	}
+	for _, groupName := range groupNames {
+		if groupName == name {
+			return "", false
+		}
+	}
+	return ClosestString(name, groupNames), true
+}
+
 func promptMissingDepsInstall(pkg PackageContext) {
 	if *fakeroot || *ignoreDeps {
 		return
@@ -105,12 +120,14 @@ func promptMissingDepsInstall(pkg PackageContext) {
 		if cmd.ProcessState.ExitCode() != 0 {
 			abort()
 		}
+		return
 	} else if strings.Contains(text, "l") {
 		outputStatus(strings.Join(missingDeps, " "))
 		os.Exit(0)
 	} else if strings.Contains(text, "a") {
 		abort()
 	}
+	abort()
 }
 
 //* Built package linting

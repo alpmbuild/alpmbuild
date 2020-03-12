@@ -58,6 +58,20 @@ func ListPackagesAsString(field PackageField) ([]string, error) {
 	return fields, err
 }
 
+func ListGroups() []string {
+	cmd := exec.Command("pacman", "-Sg")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return []string{}
+	}
+	outputStr := strings.TrimSpace(string(output))
+	var groups []string
+	for _, line := range strings.Split(outputStr, "\n") {
+		groups = append(groups, line)
+	}
+	return groups
+}
+
 func PackageInstalled(packageName string) bool {
 	cmd := exec.Command("pacman", "-Qi", packageName)
 

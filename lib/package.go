@@ -82,6 +82,7 @@ var PossibleKeys = []string{
 	"Conflicts:",
 	"Replaces:",
 	"ExclusiveArch:",
+	"Groups:",
 }
 
 var PossibleDirectives = []string{
@@ -169,6 +170,7 @@ type PackageContext struct {
 	Provides      []string `keyArray:"provides:" pkginfo:"provides"`
 	Conflicts     []string `keyArray:"conflicts:" pkginfo:"conflicts"`
 	Replaces      []string `keyArray:"replaces:" pkginfo:"replaces"`
+	Groups        []string `keyArray:"groups:" pkginfo:"group"`
 	ExclusiveArch []string `keyArray:"exclusivearch:"`
 
 	// Nonstandard single-value fields
