@@ -2,8 +2,10 @@ package lib
 
 import (
 	"flag"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/appadeia/alpmbuild/lib/librpm"
 )
@@ -61,6 +63,20 @@ func Enter() {
 	ignoreDeps = flag.Bool("ignoreDeps", false, "Ignore dependencies.")
 	fakeroot = flag.Bool("fakeroot", false, "Internal flag. Do not set.")
 	initialWorking, _ = os.Getwd()
+
+	// This is an easter egg.
+	if strings.Contains(strings.Join(os.Args, " "), "hit a ghost") {
+		rand.Seed(time.Now().Unix())
+		howNotToAbuseAGhost := []string{
+			"Fantasmas não são para bater!",
+			"Duchów się nie bije!",
+			"I fantasmi non sono da colpire!",
+			"¡Los fantasmas no están para golpearlos!",
+			"¡Los fantasmas no son para pegar!",
+			"Les fantômes ne sont pas fait pour être tapés!",
+		}
+		outputError("Please don't abuse ghosts. " + howNotToAbuseAGhost[rand.Intn(len(howNotToAbuseAGhost))])
+	}
 
 	flag.Parse()
 
