@@ -58,6 +58,8 @@ const (
 	PreRemoveStage
 	PostRemoveStage
 
+	ChangelogStage
+
 	IfTrueStage
 	IfFalseStage
 )
@@ -79,7 +81,6 @@ var PossibleKeys = []string{
 	"Provides:",
 	"Conflicts:",
 	"Replaces:",
-	"Changelog:",
 }
 
 var PossibleDirectives = []string{
@@ -172,12 +173,11 @@ type PackageContext struct {
 	Version string `macro:"version" key:"version:"`
 	Release string `macro:"release" key:"release:"`
 
-	Changelog string `key:"changelog:"`
-
 	// Nonstandard array fields
-	Sources []Source
-	Patches []Source
-	Files   []string
+	Sources   []Source
+	Patches   []Source
+	Changelog []string
+	Files     []string
 
 	// Command fields
 	Commands struct {
@@ -299,6 +299,17 @@ func (pkg PackageContext) GeneratePackageInfo() {
 	err = ioutil.WriteFile(filepath.Join(pkgdir, ".PKGINFO"), []byte(packageInfo), 0644)
 	if err != nil {
 		outputError(fmt.Sprintf("Failed to generate pkginfo:\n%s", err.Error()))
+	}
+}
+
+func (pkg PackageContext) GenerateCHANGELOG() {
+	changelog := strings.Join(pkg.Changelog, "\n")
+	if changelog != "" {
+		err := ioutil.WriteFile(filepath.Join(pkg.PackageRoot(), ".CHANGELOG"), []byte(changelog), 0775)
+		if err != nil {
+			outputError("Failed to build changelog for package " + highlight(pkg.GetNevra()) + ": " + err.Error())
+		}
+		os.Chown(filepath.Join(pkg.PackageRoot(), ".CHANGELOG"), 0, 0)
 	}
 }
 
@@ -565,7 +576,7 @@ func (pkg PackageContext) VerifyFiles() {
 				path,
 				pathToWalk,
 			)
-			if truncPath == "" || truncPath == "/.MTREE" || truncPath == "/.PKGINFO" {
+			if truncPath == "" || truncPath == "/.MTREE" || truncPath == "/.PKGINFO" || truncPath == "/.CHANGELOG" || truncPath == "/.INSTALL" {
 				return nil
 			}
 			hasMatch := false
@@ -786,6 +797,7 @@ func (pkg PackageContext) BuildPackage() {
 		subpackage.TakeFilesFromParent()
 		subpackage.lintAll()
 		subpackage.GenerateINSTALL()
+		subpackage.GenerateCHANGELOG()
 		subpackage.GeneratePackageInfo()
 		subpackage.GenerateMTree()
 		subpackage.CompressPackage()
@@ -794,6 +806,7 @@ func (pkg PackageContext) BuildPackage() {
 
 	pkg.lintAll()
 	pkg.GenerateINSTALL()
+	pkg.GenerateCHANGELOG()
 	pkg.GeneratePackageInfo()
 	pkg.GenerateMTree()
 	pkg.ClearTimestamps()

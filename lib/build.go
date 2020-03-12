@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"reflect"
@@ -45,6 +44,7 @@ func ParsePackage(data string) PackageContext {
 	ifStage := NoStage
 	currentSubpackage := ""
 	currentFilesSubpackage := ""
+	currentChangelogSubpackage := ""
 
 mainParseLoop:
 	for currentLine, line := range strings.Split(strings.TrimSuffix(data, "\n"), "\n") {
@@ -483,6 +483,19 @@ mainParseLoop:
 				currentStage = FileStage
 				continue mainParseLoop
 			}
+			if strings.HasPrefix(line, "%changelog") {
+				if subpackageName, hasSubpackage := grabFlagFromString(line, "-n", []string{}); hasSubpackage {
+					currentChangelogSubpackage = subpackageName
+				} else {
+					if splitString := strings.Split(line, " "); len(splitString) >= 2 {
+						currentChangelogSubpackage = lex.Name + "-" + splitString[1]
+					} else {
+						currentChangelogSubpackage = ""
+					}
+				}
+				currentStage = ChangelogStage
+				continue mainParseLoop
+			}
 
 			// If we're in a stage, we want to append some commands to our list
 			m := map[Stage]*[]string{
@@ -498,6 +511,18 @@ mainParseLoop:
 			}
 			if str, ok := m[currentStage]; ok {
 				*str = append(*str, evalInlineMacros(line, lex))
+				continue mainParseLoop
+			}
+			if currentStage == ChangelogStage {
+				if currentChangelogSubpackage == "" {
+					lex.Changelog = append(lex.Changelog, line)
+				} else {
+					if val, ok := lex.Subpackages[currentChangelogSubpackage]; ok {
+						subpkg := val
+						subpkg.Changelog = append(subpkg.Changelog, line)
+						lex.Subpackages[currentChangelogSubpackage] = subpkg
+					}
+				}
 				continue mainParseLoop
 			}
 			if currentStage == FileStage {
@@ -532,11 +557,6 @@ mainParseLoop:
 			outputStatus("Automatically setting up package...")
 		}
 		lex.Commands.Prepare = append(lex.Commands.Prepare, evalInlineMacros("%setup -q", lex))
-	}
-
-	p, err := json.MarshalIndent(lex, "", "\t")
-	if err == nil {
-		println(string(p))
 	}
 
 	lex.BuildPackage()

@@ -40,8 +40,14 @@ chown -R root:root %{?buildroot}
 %pre_install
 echo lmao
 
+%changelog
+this is a changelog
+
 %package translationfiles
 Summary: Translation files for %{name}
+
+%changelog translationfiles
+this is a changelog
 
 %files translationfiles
 %{_datadir}/locale/*/LC_MESSAGES/hello.mo
