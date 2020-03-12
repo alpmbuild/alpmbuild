@@ -49,6 +49,7 @@ const (
 	PrepareStage
 	BuildStage
 	InstallStage
+	CheckStage
 	FileStage
 
 	PreInstallStage
@@ -83,6 +84,7 @@ var PossibleKeys = []string{
 	"Replaces:",
 	"ExclusiveArch:",
 	"Groups:",
+	"CheckRequires:",
 }
 
 var PossibleDirectives = []string{
@@ -121,6 +123,7 @@ var packageFields = []string{
 	"provides:",
 	"conflicts:",
 	"replaces:",
+	"checkrequires:",
 }
 
 type HashType int
@@ -165,6 +168,7 @@ type PackageContext struct {
 
 	// Array fields with relatively standard behaviour.
 	Requires      []string `keyArray:"requires:" pkginfo:"depend"`
+	CheckRequires []string `keyArray:"checkrequires:" pkginfo:"checkdepend"`
 	Recommends    []string `keyArray:"recommends:" pkginfo:"optdepend"`
 	BuildRequires []string `keyArray:"buildrequires:" pkginfo:"makedepend"`
 	Provides      []string `keyArray:"provides:" pkginfo:"provides"`
@@ -188,6 +192,7 @@ type PackageContext struct {
 		Prepare []string
 		Build   []string
 		Install []string
+		Check   []string
 	}
 
 	// Scriptlet fields
@@ -771,6 +776,7 @@ func (pkg PackageContext) BuildPackage() {
 
 	commands = append(commands, pkg.Commands.Prepare...)
 	commands = append(commands, pkg.Commands.Build...)
+	commands = append(commands, pkg.Commands.Check...)
 	installCommands = append(installCommands, pkg.Commands.Install...)
 
 	path, err := writeTempfile(strings.Join(commands, "\n"))

@@ -87,7 +87,7 @@ func promptMissingDepsInstall(pkg PackageContext) {
 
 	var missingDeps []string
 
-	for _, pkg := range append(pkg.Requires, pkg.BuildRequires...) {
+	for _, pkg := range append(append(pkg.Requires, pkg.BuildRequires...), pkg.CheckRequires...) {
 		if !libalpm.PackageInstalled(pkg) {
 			missingDeps = append(missingDeps, pkg)
 		}

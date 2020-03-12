@@ -477,6 +477,7 @@ mainParseLoop:
 				"%prep":    PrepareStage,
 				"%build":   BuildStage,
 				"%install": InstallStage,
+				"%check":   CheckStage,
 			}
 			for stageString, stageEnum := range stages {
 				if strings.HasPrefix(line, stageString) {
@@ -539,6 +540,7 @@ mainParseLoop:
 				PrepareStage: &lex.Commands.Prepare,
 				BuildStage:   &lex.Commands.Build,
 				InstallStage: &lex.Commands.Install,
+				CheckStage:   &lex.Commands.Check,
 			}
 			if str, ok := m[currentStage]; ok {
 				*str = append(*str, evalInlineMacros(line, lex))
