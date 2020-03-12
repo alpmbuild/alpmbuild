@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"reflect"
@@ -45,6 +46,7 @@ func ParsePackage(data string) PackageContext {
 	currentSubpackage := ""
 	currentFilesSubpackage := ""
 	currentChangelogSubpackage := ""
+	currentScriptletSubpackage := ""
 
 mainParseLoop:
 	for currentLine, line := range strings.Split(strings.TrimSuffix(data, "\n"), "\n") {
@@ -456,7 +458,14 @@ mainParseLoop:
 				"%prep":    PrepareStage,
 				"%build":   BuildStage,
 				"%install": InstallStage,
-
+			}
+			for stageString, stageEnum := range stages {
+				if strings.HasPrefix(line, stageString) {
+					currentStage = stageEnum
+					continue mainParseLoop
+				}
+			}
+			var scriptletStages = map[string]Stage{
 				"%pre_install":  PreInstallStage,
 				"%post_install": PostInstallStage,
 				"%pre_upgrade":  PreUpgradeStage,
@@ -464,8 +473,17 @@ mainParseLoop:
 				"%pre_remove":   PreRemoveStage,
 				"%post_remove":  PostRemoveStage,
 			}
-			for stageString, stageEnum := range stages {
+			for stageString, stageEnum := range scriptletStages {
 				if strings.HasPrefix(line, stageString) {
+					if subpackageName, hasSubpackage := grabFlagFromString(line, "-n", []string{}); hasSubpackage {
+						currentScriptletSubpackage = subpackageName
+					} else {
+						if splitString := strings.Split(line, " "); len(splitString) >= 2 {
+							currentScriptletSubpackage = lex.Name + "-" + splitString[1]
+						} else {
+							currentScriptletSubpackage = ""
+						}
+					}
 					currentStage = stageEnum
 					continue mainParseLoop
 				}
@@ -499,19 +517,46 @@ mainParseLoop:
 
 			// If we're in a stage, we want to append some commands to our list
 			m := map[Stage]*[]string{
-				PrepareStage:     &lex.Commands.Prepare,
-				BuildStage:       &lex.Commands.Build,
-				InstallStage:     &lex.Commands.Install,
-				PreInstallStage:  &lex.Scriptlets.PreInstall,
-				PostInstallStage: &lex.Scriptlets.PostInstall,
-				PreUpgradeStage:  &lex.Scriptlets.PreUpgrade,
-				PostUpgradeStage: &lex.Scriptlets.PostUpgrade,
-				PreRemoveStage:   &lex.Scriptlets.PreRemove,
-				PostRemoveStage:  &lex.Scriptlets.PostRemove,
+				PrepareStage: &lex.Commands.Prepare,
+				BuildStage:   &lex.Commands.Build,
+				InstallStage: &lex.Commands.Install,
 			}
 			if str, ok := m[currentStage]; ok {
 				*str = append(*str, evalInlineMacros(line, lex))
 				continue mainParseLoop
+			}
+			if currentScriptletSubpackage == "" {
+				scriptletStages := map[Stage]*[]string{
+					PreInstallStage:  &lex.Scriptlets.PreInstall,
+					PostInstallStage: &lex.Scriptlets.PostInstall,
+					PreUpgradeStage:  &lex.Scriptlets.PreUpgrade,
+					PostUpgradeStage: &lex.Scriptlets.PostUpgrade,
+					PreRemoveStage:   &lex.Scriptlets.PreRemove,
+					PostRemoveStage:  &lex.Scriptlets.PostRemove,
+				}
+				if str, ok := scriptletStages[currentStage]; ok {
+					*str = append(*str, evalInlineMacros(line, lex))
+					continue mainParseLoop
+				}
+			} else {
+				if val, ok := lex.Subpackages[currentScriptletSubpackage]; ok {
+					subpkg := val
+					scriptletStages := map[Stage]*[]string{
+						PreInstallStage:  &subpkg.Scriptlets.PreInstall,
+						PostInstallStage: &subpkg.Scriptlets.PostInstall,
+						PreUpgradeStage:  &subpkg.Scriptlets.PreUpgrade,
+						PostUpgradeStage: &subpkg.Scriptlets.PostUpgrade,
+						PreRemoveStage:   &subpkg.Scriptlets.PreRemove,
+						PostRemoveStage:  &subpkg.Scriptlets.PostRemove,
+					}
+					if str, ok := scriptletStages[currentStage]; ok {
+						*str = append(*str, evalInlineMacros(line, lex))
+						lex.Subpackages[currentScriptletSubpackage] = subpkg
+						continue mainParseLoop
+					}
+				} else {
+					outputError("You cannot specify scriptlets for a subpackage that has not been declared")
+				}
 			}
 			if currentStage == ChangelogStage {
 				if currentChangelogSubpackage == "" {
@@ -557,6 +602,11 @@ mainParseLoop:
 			outputStatus("Automatically setting up package...")
 		}
 		lex.Commands.Prepare = append(lex.Commands.Prepare, evalInlineMacros("%setup -q", lex))
+	}
+
+	p, err := json.MarshalIndent(lex, "", "\t")
+	if err == nil {
+		println(string(p))
 	}
 
 	lex.BuildPackage()

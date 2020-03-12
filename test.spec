@@ -46,6 +46,9 @@ this is a changelog
 %package translationfiles
 Summary: Translation files for %{name}
 
+%post_install translationfiles
+echo oof
+
 %changelog translationfiles
 this is a changelog
 
