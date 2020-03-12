@@ -188,20 +188,26 @@ mainParseLoop:
 								hashWord := slice[index+2]
 								switch hashType {
 								case "sha1":
-									source.Sha1 = hashWord
+									source.Sha1 = evalInlineMacros(hashWord, lex)
 								case "sha224":
-									source.Sha224 = hashWord
+									source.Sha224 = evalInlineMacros(hashWord, lex)
 								case "sha256":
-									source.Sha256 = hashWord
+									source.Sha256 = evalInlineMacros(hashWord, lex)
 								case "sha384":
-									source.Sha384 = hashWord
+									source.Sha384 = evalInlineMacros(hashWord, lex)
 								case "sha512":
-									source.Sha512 = hashWord
+									source.Sha512 = evalInlineMacros(hashWord, lex)
 								case "md5":
-									source.Md5 = hashWord
+									source.Md5 = evalInlineMacros(hashWord, lex)
+								case "sig":
+									source.GPGSignatureURL = evalInlineMacros(hashWord, lex)
+								case "key":
+									source.GPGKeys = append(source.GPGKeys, evalInlineMacros(hashWord, lex))
+								case "keyserver":
+									source.GPGKeyservers = append(source.GPGKeyservers, evalInlineMacros(hashWord, lex))
 								default:
 									outputErrorHighlight(
-										"Invalid hash type on line "+strconv.Itoa(currentLine+1),
+										"Invalid integrity tool on line "+strconv.Itoa(currentLine+1),
 										line,
 										"Did you mean to use "+highlight(ClosestString(hashType, hashTypes))+"?",
 										strings.Index(line, hashType), len(hashType),

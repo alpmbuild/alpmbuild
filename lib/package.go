@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"bufio"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -145,17 +146,23 @@ var hashTypes = []string{
 	"sha384",
 	"sha512",
 	"md5",
+	"sig",
+	"key",
+	"keyserver",
 }
 
 type Source struct {
-	URL    string
-	Rename string
-	Md5    string
-	Sha1   string
-	Sha256 string
-	Sha224 string
-	Sha384 string
-	Sha512 string
+	URL             string
+	Rename          string
+	Md5             string
+	Sha1            string
+	Sha256          string
+	Sha224          string
+	Sha384          string
+	Sha512          string
+	GPGSignatureURL string
+	GPGKeys         []string
+	GPGKeyservers   []string
 }
 
 type PackageContext struct {
@@ -511,16 +518,67 @@ func (pkg PackageContext) setupSources() error {
 		return nil
 	}
 
-	for _, source := range pkg.Sources {
+	for _, source := range append(pkg.Sources, pkg.Patches...) {
 		err := handleSource(source)
 		if err != nil {
 			return err
 		}
-	}
-	for _, patch := range pkg.Patches {
-		err := handleSource(patch)
-		if err != nil {
-			return err
+		if source.GPGSignatureURL != "" {
+			err = handleSource(Source{
+				URL: source.GPGSignatureURL,
+			})
+			if err != nil {
+				return err
+			}
+			handleSig := func(key, server string) {
+				println(bold("  Do you want to try importing the key with ID ") + highlight(key) + bold(" from keyserver ") + highlight(server))
+				println(bold("  [y/N]"))
+				println()
+				print("  " + bold("-> "))
+
+				reader := bufio.NewReader(os.Stdin)
+
+				text, _ := reader.ReadString('\n')
+
+				if strings.Contains(strings.ToLower(text), "y") {
+					cmd := exec.Command("gpg", "--keyserver", server, "--recv-keys", key)
+					cmd.Run()
+					if cmd.ProcessState.ExitCode() != 0 {
+						outputWarning("Failed to import GPG key")
+					}
+				}
+
+				println()
+			}
+			for _, keyserver := range source.GPGKeyservers {
+				for _, key := range source.GPGKeys {
+					if !*fakeroot {
+						handleSig(key, keyserver)
+					}
+				}
+			}
+			baseSource := path.Base(source.URL)
+			baseSignat := path.Base(source.GPGSignatureURL)
+			if !*fakeroot {
+				cmd := exec.Command("gpg", "--verify", filepath.Join(home, "alpmbuild/buildroot", baseSignat), filepath.Join(home, "alpmbuild/buildroot", baseSource))
+				outputStatus(
+					fmt.Sprintf(
+						"Verifiying of the source file %s for package %s...",
+						highlight(baseSource),
+						highlight(pkg.GetNevra()),
+					),
+				)
+				cmd.Run()
+				if cmd.ProcessState.ExitCode() != 0 {
+					outputError(
+						fmt.Sprintf(
+							"Failed to verify the signature of source file %s for package %s",
+							highlight(baseSource),
+							highlight(pkg.GetNevra()),
+						),
+					)
+				}
+			}
 		}
 	}
 

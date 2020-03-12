@@ -6,7 +6,11 @@ License: GPL
 URL:     https://gnu.org
 Groups:  qt5 yeet
 
-Source0: https://ftp.gnu.org/gnu/hello/%{name}-%{version}.tar.gz with md5 6cd0ffea3884a4e79330338dcc2987d6
+Source0: https://ftp.gnu.org/gnu/hello/%{name}-%{version}.tar.gz \
+         with md5 6cd0ffea3884a4e79330338dcc2987d6 \
+         with sig https://ftp.gnu.org/gnu/hello/%{name}-%{version}.tar.gz.sig \
+         with key A9553245FDE9B739 \
+         with keyserver keys.gnupg.net
 #!alpmbuild ReasonFor cyanogen: This is a really cool package
 Recommends: cyanogen
 %if 0
