@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"reflect"
@@ -602,11 +601,6 @@ mainParseLoop:
 			outputStatus("Automatically setting up package...")
 		}
 		lex.Commands.Prepare = append(lex.Commands.Prepare, evalInlineMacros("%setup -q", lex))
-	}
-
-	p, err := json.MarshalIndent(lex, "", "\t")
-	if err == nil {
-		println(string(p))
 	}
 
 	lex.BuildPackage()

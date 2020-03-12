@@ -81,6 +81,7 @@ var PossibleKeys = []string{
 	"Provides:",
 	"Conflicts:",
 	"Replaces:",
+	"ExclusiveArch:",
 }
 
 var PossibleDirectives = []string{
@@ -168,6 +169,7 @@ type PackageContext struct {
 	Provides      []string `keyArray:"provides:" pkginfo:"provides"`
 	Conflicts     []string `keyArray:"conflicts:" pkginfo:"conflicts"`
 	Replaces      []string `keyArray:"replaces:" pkginfo:"replaces"`
+	ExclusiveArch []string `keyArray:"exclusivearch:"`
 
 	// Nonstandard single-value fields
 	Version string `macro:"version" key:"version:"`
@@ -715,7 +717,30 @@ func (pkg *PackageContext) InheritFromParent() {
 	}
 }
 
+func (pkg PackageContext) CheckArch() {
+	uname, _ := exec.Command("uname", "-m").CombinedOutput()
+	unameString := strings.TrimSpace(string(uname))
+	if len(pkg.ExclusiveArch) > 0 {
+		for _, arch := range pkg.ExclusiveArch {
+			if arch == unameString {
+				return
+			}
+		}
+	} else {
+		return
+	}
+	outputError(
+		fmt.Sprintf(
+			"System architecture %s is not in the list of available arches for %s: %s",
+			highlight(unameString),
+			highlight(pkg.GetNevr()),
+			strings.Join(pkg.ExclusiveArch, ", "),
+		),
+	)
+}
+
 func (pkg PackageContext) BuildPackage() {
+	pkg.CheckArch()
 	if !*fakeroot {
 		outputStatus("Building package " + highlight(pkg.GetNevra()) + "...")
 	}
