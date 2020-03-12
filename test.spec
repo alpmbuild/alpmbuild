@@ -16,9 +16,9 @@ Requires: still-invalid
 %else
 Requires: base pingas
 %endif
-BuildRequires: gcc
-BuildRequires: make
-BuildRequires: gettext
+BuildRequires: gcc \
+               make \
+               gettext
 CheckRequires: aaaaaa
 
 %install

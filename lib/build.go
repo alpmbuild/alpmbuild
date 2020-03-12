@@ -35,6 +35,8 @@ func ParsePackage(data string) PackageContext {
 		outputStatus("Parsing package...")
 	}
 
+	data = strings.ReplaceAll(data, "\\\n", "")
+
 	lex := PackageContext{}
 
 	lex.Subpackages = make(map[string]PackageContext)
@@ -127,7 +129,7 @@ mainParseLoop:
 						if len(split) < 2 {
 							outputError("alpmbuild ran into an error state that should not be possible.\nPlease report this to https://github.com/appadeia/alpmbuild and attach a specfile.")
 						}
-						name := strings.Split(split[0], " ")[len(strings.Split(split[0], " "))-1]
+						name := strings.Fields(split[0])[len(strings.Fields(split[0]))-1]
 						lex.Reasons[name] = strings.TrimSpace(split[1])
 						continue mainParseLoop
 					} else {
@@ -304,7 +306,7 @@ mainParseLoop:
 					// If it doesn't, our code will break.
 					key := reflect.ValueOf(&currentPackage).Elem().FieldByName(field.Name)
 					if key.IsValid() {
-						itemArray := strings.Split(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex), " ")
+						itemArray := strings.Fields(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex))
 						if !*ignoreDeps && !*fakeroot {
 							for _, packageField := range packageFields {
 								if field.Tag.Get("keyArray") == packageField {
@@ -447,7 +449,7 @@ mainParseLoop:
 			if subpackageName, hasSubpackage := grabFlagFromString(line, "-n", []string{}); hasSubpackage {
 				currentSubpackage = subpackageName
 			} else {
-				if splitString := strings.Split(line, " "); len(splitString) >= 2 {
+				if splitString := strings.Fields(line); len(splitString) >= 2 {
 					currentSubpackage = lex.Name + "-" + splitString[1]
 				} else {
 					outputError("%package needs to have a name")
@@ -498,7 +500,7 @@ mainParseLoop:
 					if subpackageName, hasSubpackage := grabFlagFromString(line, "-n", []string{}); hasSubpackage {
 						currentScriptletSubpackage = subpackageName
 					} else {
-						if splitString := strings.Split(line, " "); len(splitString) >= 2 {
+						if splitString := strings.Fields(line); len(splitString) >= 2 {
 							currentScriptletSubpackage = lex.Name + "-" + splitString[1]
 						} else {
 							currentScriptletSubpackage = ""
@@ -512,7 +514,7 @@ mainParseLoop:
 				if subpackageName, hasSubpackage := grabFlagFromString(line, "-n", []string{}); hasSubpackage {
 					currentFilesSubpackage = subpackageName
 				} else {
-					if splitString := strings.Split(line, " "); len(splitString) >= 2 {
+					if splitString := strings.Fields(line); len(splitString) >= 2 {
 						currentFilesSubpackage = lex.Name + "-" + splitString[1]
 					} else {
 						currentFilesSubpackage = ""
@@ -525,7 +527,7 @@ mainParseLoop:
 				if subpackageName, hasSubpackage := grabFlagFromString(line, "-n", []string{}); hasSubpackage {
 					currentChangelogSubpackage = subpackageName
 				} else {
-					if splitString := strings.Split(line, " "); len(splitString) >= 2 {
+					if splitString := strings.Fields(line); len(splitString) >= 2 {
 						currentChangelogSubpackage = lex.Name + "-" + splitString[1]
 					} else {
 						currentChangelogSubpackage = ""
