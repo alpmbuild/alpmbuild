@@ -592,12 +592,24 @@ mainParseLoop:
 				continue mainParseLoop
 			}
 			if currentStage == FileStage {
+				var backup string
+				if strings.HasPrefix(line, "%config") {
+					backup = strings.TrimPrefix(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, "%config")), lex), "/")
+				}
 				if currentFilesSubpackage == "" {
-					lex.Files = append(lex.Files, evalInlineMacros(line, lex))
+					if backup != "" {
+						lex.Backup = append(lex.Backup, evalInlineMacros(backup, lex))
+					} else {
+						lex.Files = append(lex.Files, evalInlineMacros(line, lex))
+					}
 				} else {
 					if val, ok := lex.Subpackages[currentFilesSubpackage]; ok {
 						subpkg := val
-						subpkg.Files = append(subpkg.Files, evalInlineMacros(line, lex))
+						if backup != "" {
+							subpkg.Backup = append(subpkg.Backup, evalInlineMacros(backup, lex))
+						} else {
+							subpkg.Files = append(subpkg.Files, evalInlineMacros(line, lex))
+						}
 						lex.Subpackages[currentFilesSubpackage] = subpkg
 					} else {
 						outputError("You cannot specify files for a subpackage if the subpackage has not been declared")

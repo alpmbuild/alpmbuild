@@ -186,6 +186,7 @@ type PackageContext struct {
 	Patches   []Source
 	Changelog []string
 	Files     []string
+	Backup    []string `keyArray:"backup:" pkginfo:"backup"`
 
 	// Command fields
 	Commands struct {

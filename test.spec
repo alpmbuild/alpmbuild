@@ -34,7 +34,7 @@ touch %{?buildroot}/%{_datadir}/locale/en_US/LC_MESSAGES/hello.mo
 chown -R root:root %{?buildroot}
 
 %files
-%{_bindir}/hello
+%config %{_bindir}/hello
 %{_datadir}/info/dir
 %{_datadir}/info/hello.info
 %{_datadir}/man/man1/hello.1
