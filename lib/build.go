@@ -297,51 +297,75 @@ mainParseLoop:
 					hasSet = true
 				}
 				// These are the single-value keys, such as Name, Version, Release, and Summary
-				if strings.ToLower(words[0]) == field.Tag.Get("key") {
-					// We assert that packageContext only has string fields here.
-					// If it doesn't, our code will break.
-					key := reflect.ValueOf(&currentPackage).Elem().FieldByName(field.Name)
-					if key.IsValid() {
-						key.SetString(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex))
-						hasSet = true
+				for _, keyName := range strings.Fields(field.Tag.Get("key")) {
+					if strings.ToLower(words[0]) == keyName {
+						// We assert that packageContext only has string fields here.
+						// If it doesn't, our code will break.
+						key := reflect.ValueOf(&currentPackage).Elem().FieldByName(field.Name)
+						if key.IsValid() {
+							key.SetString(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex))
+							hasSet = true
+						}
 					}
 				}
 				// These are the multi-value keys, such as Requires and BuildRequires
-				if strings.ToLower(words[0]) == field.Tag.Get("keyArray") {
-					// We assume that packageContext only has string array fields here.
-					// If it doesn't, our code will break.
-					key := reflect.ValueOf(&currentPackage).Elem().FieldByName(field.Name)
-					if key.IsValid() {
-						itemArray := strings.Fields(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex))
-						if !*ignoreDeps && !*fakeroot {
-							for _, packageField := range packageFields {
-								if field.Tag.Get("keyArray") == packageField {
-									for _, item := range itemArray {
-										if err, _ := lintPackageName(item); err != ValidName {
-											outputErrorHighlight(
-												fmt.Sprintf(
-													"%s is not a valid package identifier on line %s",
-													highlight(item),
-													strconv.Itoa(currentLine+1),
-												),
-												line,
-												fmt.Sprintf(
-													"Package identifiers can include %s, %s, %s, %s, %s, and %s",
-													highlight("alphanumeric characters"),
-													highlight("+"),
-													highlight("_"),
-													highlight("."),
-													highlight("@"),
-													highlight("-"),
-												),
-												strings.Index(line, item),
-												len(item),
-											)
+				for _, keyName := range strings.Fields(field.Tag.Get("keyArray")) {
+					if strings.ToLower(words[0]) == keyName {
+						// We assume that packageContext only has string array fields here.
+						// If it doesn't, our code will break.
+						key := reflect.ValueOf(&currentPackage).Elem().FieldByName(field.Name)
+						if key.IsValid() {
+							itemArray := strings.Fields(evalInlineMacros(strings.TrimSpace(strings.TrimPrefix(line, words[0])), lex))
+							if !*ignoreDeps && !*fakeroot {
+								for _, packageField := range packageFields {
+									if field.Tag.Get("keyArray") == packageField {
+										for _, item := range itemArray {
+											if err, _ := lintPackageName(item); err != ValidName {
+												outputErrorHighlight(
+													fmt.Sprintf(
+														"%s is not a valid package identifier on line %s",
+														highlight(item),
+														strconv.Itoa(currentLine+1),
+													),
+													line,
+													fmt.Sprintf(
+														"Package identifiers can include %s, %s, %s, %s, %s, and %s",
+														highlight("alphanumeric characters"),
+														highlight("+"),
+														highlight("_"),
+														highlight("."),
+														highlight("@"),
+														highlight("-"),
+													),
+													strings.Index(line, item),
+													len(item),
+												)
+											}
+											if correction, needed := lintDependency(item); needed {
+												outputWarningHighlight(
+													fmt.Sprintf(
+														"Dependent package %s does not exist in repositories on line %s",
+														highlight(item),
+														strconv.Itoa(currentLine+1),
+													),
+													line,
+													fmt.Sprintf(
+														"Did you mean to use %s?",
+														highlight(correction),
+													),
+													strings.Index(line, item),
+													len(item),
+												)
+											}
 										}
-										if correction, needed := lintDependency(item); needed {
+									}
+								}
+								if field.Tag.Get("keyArray") == "groups:" {
+									for _, item := range itemArray {
+										if correction, needed := lintGroup(item); needed {
 											outputWarningHighlight(
 												fmt.Sprintf(
-													"Dependent package %s does not exist in repositories on line %s",
+													"Group %s does not exist in repositories on line %s",
 													highlight(item),
 													strconv.Itoa(currentLine+1),
 												),
@@ -357,30 +381,10 @@ mainParseLoop:
 									}
 								}
 							}
-							if field.Tag.Get("keyArray") == "groups:" {
-								for _, item := range itemArray {
-									if correction, needed := lintGroup(item); needed {
-										outputWarningHighlight(
-											fmt.Sprintf(
-												"Group %s does not exist in repositories on line %s",
-												highlight(item),
-												strconv.Itoa(currentLine+1),
-											),
-											line,
-											fmt.Sprintf(
-												"Did you mean to use %s?",
-												highlight(correction),
-											),
-											strings.Index(line, item),
-											len(item),
-										)
-									}
-								}
-							}
-						}
 
-						key.Set(reflect.AppendSlice(key, reflect.ValueOf(itemArray)))
-						hasSet = true
+							key.Set(reflect.AppendSlice(key, reflect.ValueOf(itemArray)))
+							hasSet = true
+						}
 					}
 				}
 			}

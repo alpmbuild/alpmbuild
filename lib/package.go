@@ -83,6 +83,7 @@ var PossibleKeys = []string{
 	"Provides:",
 	"Conflicts:",
 	"Replaces:",
+	"Obsoletes:",
 	"ExclusiveArch:",
 	"Groups:",
 	"CheckRequires:",
@@ -124,6 +125,7 @@ var packageFields = []string{
 	"provides:",
 	"conflicts:",
 	"replaces:",
+	"obsoletes:",
 	"checkrequires:",
 }
 
@@ -180,7 +182,7 @@ type PackageContext struct {
 	BuildRequires []string `keyArray:"buildrequires:" pkginfo:"makedepend"`
 	Provides      []string `keyArray:"provides:" pkginfo:"provides"`
 	Conflicts     []string `keyArray:"conflicts:" pkginfo:"conflicts"`
-	Replaces      []string `keyArray:"replaces:" pkginfo:"replaces"`
+	Replaces      []string `keyArray:"replaces: obsoletes:" pkginfo:"replaces"`
 	Groups        []string `keyArray:"groups:" pkginfo:"group"`
 	ExclusiveArch []string `keyArray:"exclusivearch:"`
 

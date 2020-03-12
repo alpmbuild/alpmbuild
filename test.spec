@@ -24,6 +24,8 @@ BuildRequires: gcc \
                make \
                gettext
 CheckRequires: aaaaaa
+Obsoletes: ouchie
+Replaces:  oofie
 
 %install
 mkdir -p %{?buildroot}/%{_bindir}
