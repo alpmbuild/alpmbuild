@@ -6,7 +6,7 @@ import (
 )
 
 type Package struct {
-	Repository string
+	Repository string `json:",omitempty"`
 	Name       string
 	Version    string
 }
@@ -18,6 +18,23 @@ const (
 	PackageName
 	PackageVersion
 )
+
+func ListInstalled() (pkgs []Package, err error) {
+	cmd := exec.Command("pacman", "-Q")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return
+	}
+	str := string(output)
+	for _, line := range strings.Split(strings.TrimSpace(str), "\n") {
+		split := strings.Fields(line)
+		pkgs = append(pkgs, Package{
+			Name:    split[0],
+			Version: split[1],
+		})
+	}
+	return
+}
 
 func ListPackages() ([]Package, error) {
 	cmd := exec.Command("pacman", "-Sl")

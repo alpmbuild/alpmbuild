@@ -653,7 +653,7 @@ func (pkg PackageContext) VerifyFiles() {
 				path,
 				pathToWalk,
 			)
-			if truncPath == "" || truncPath == "/.MTREE" || truncPath == "/.PKGINFO" || truncPath == "/.CHANGELOG" || truncPath == "/.INSTALL" {
+			if truncPath == "" || truncPath == "/.MTREE" || truncPath == "/.ALPMBUILD_BUILDINFO" || truncPath == "/.PKGINFO" || truncPath == "/.CHANGELOG" || truncPath == "/.INSTALL" {
 				return nil
 			}
 			hasMatch := false
@@ -900,6 +900,7 @@ func (pkg PackageContext) BuildPackage() {
 		subpackage.GenerateINSTALL()
 		subpackage.GenerateCHANGELOG()
 		subpackage.GeneratePackageInfo()
+		subpackage.GenerateBuildInfo()
 		subpackage.GenerateMTree()
 		subpackage.CompressPackage()
 		subpackage.VerifyFiles()
@@ -909,6 +910,7 @@ func (pkg PackageContext) BuildPackage() {
 	pkg.GenerateINSTALL()
 	pkg.GenerateCHANGELOG()
 	pkg.GeneratePackageInfo()
+	pkg.GenerateBuildInfo()
 	pkg.GenerateMTree()
 	pkg.ClearTimestamps()
 	pkg.CompressPackage()

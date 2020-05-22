@@ -654,6 +654,8 @@ mainParseLoop:
 	return lex
 }
 
+var rawdata []byte
+
 // Build : Build a specfile, generating an Arch package.
 func Build(pathToRecipe string) error {
 	if !*fakeroot {
@@ -663,6 +665,7 @@ func Build(pathToRecipe string) error {
 	if err != nil {
 		return err
 	}
+	rawdata = data
 	ParsePackage(string(data))
 	return nil
 }
