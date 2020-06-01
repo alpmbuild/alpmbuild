@@ -19,9 +19,12 @@ sha1sums=('da952b34a9bf833d71a7403c394b758587c1504e')
 
 build() {
   cd "$srcdir/$pkgname-$pkgver"
-  EXTRA_GOFLAGS="-gcflags all=-trimpath=${PWD} -asmflags all=-trimpath=${PWD}" \
-    LDFLAGS="-linkmode external -extldflags \"${LDFLAGS}\"" \
-    make VERSION=$pkgver DESTDIR="$pkgdir" build
+  export CGO_CPPFLAGS="${CPPFLAGS}"
+  export CGO_CFLAGS="${CFLAGS}"
+  export CGO_CXXFLAGS="${CXXFLAGS}"
+  export CGO_LDFLAGS="${LDFLAGS}"
+  export GOFLAGS="-buildmode=pie -trimpath -mod=readonly -modcacherw"
+  make VERSION=$pkgver DESTDIR="$pkgdir" build
 }
 
 package() {
